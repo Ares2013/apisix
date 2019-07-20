@@ -4,6 +4,9 @@ INST_LUADIR ?= $(INST_PREFIX)/share/lua/5.1
 INST_BINDIR ?= /usr/bin
 INSTALL ?= install
 UNAME ?= $(shell uname)
+OR_EXEC ?= $(shell which openresty)
+LUA_JIT_DIR ?= $(shell TMP='./v_tmp' && $(OR_EXEC) -V &>$${TMP} && cat $${TMP} | grep prefix | grep -Eo 'prefix=(.*?)/nginx' | grep -Eo '/.*/' && rm $${TMP})luajit
+LUAROCKS_VER ?= $(shell luarocks --version | grep -E -o  "luarocks [0-9]+.")
 
 
 .PHONY: default
@@ -21,21 +24,23 @@ help:
 ### dev:          Create a development ENV
 .PHONY: dev
 dev:
-	./utils/update_nginx_conf_dev.sh
 ifeq ($(UNAME),Darwin)
-	luarocks install --lua-dir=/usr/local/openresty/luajit apisix-*.rockspec --tree=deps --only-deps
+	luarocks install --lua-dir=$(LUA_JIT_DIR) rockspec/apisix-dev-0.rockspec --tree=deps --only-deps --local
+else ifneq ($(LUAROCKS_VER),'luarocks 3.')
+	luarocks make rockspec/apisix-dev-0.rockspec --tree=deps --only-deps --local
 else
-	sudo luarocks install --lua-dir=/usr/local/openresty/luajit apisix-*.rockspec --tree=deps --only-deps
+	luarocks make --lua-dir=/usr/local/openresty/luajit rockspec/apisix-dev-0.rockspec --tree=deps --only-deps --local
 endif
 
 
-### check:        Check Lua srouce code
+### check:        Check Lua source code
 .PHONY: check
 check:
 	luacheck -q lua
 	./utils/lj-releng lua/*.lua lua/apisix/*.lua \
 		lua/apisix/admin/*.lua \
 		lua/apisix/core/*.lua \
+		lua/apisix/http/*.lua \
 		lua/apisix/plugins/*.lua > \
 		/tmp/check.log 2>&1 || (cat /tmp/check.log && exit 1)
 
@@ -52,13 +57,13 @@ init:
 run:
 	mkdir -p logs
 	mkdir -p /tmp/cores/
-	$$(which openresty) -p $$PWD/ -c $$PWD/conf/nginx.conf
+	$(OR_EXEC) -p $$PWD/ -c $$PWD/conf/nginx.conf
 
 
 ### stop:         Stop the apisix server
 .PHONY: stop
 stop:
-	$$(which openresty) -p $$PWD/ -c $$PWD/conf/nginx.conf -s stop
+	$(OR_EXEC) -p $$PWD/ -c $$PWD/conf/nginx.conf -s stop
 
 
 ### clean:        Remove generated files
@@ -70,7 +75,7 @@ clean:
 ### reload:       Reload the apisix server
 .PHONY: reload
 reload:
-	$$(which openresty) -p $$PWD/  -c $$PWD/conf/nginx.conf -s reload
+	$(OR_EXEC) -p $$PWD/  -c $$PWD/conf/nginx.conf -s reload
 
 
 ### install:      Install the apisix
@@ -87,6 +92,9 @@ install:
 	$(INSTALL) lua/apisix/core/*.lua $(INST_LUADIR)/apisix/lua/apisix/core/
 	$(INSTALL) lua/apisix/*.lua $(INST_LUADIR)/apisix/lua/apisix/
 
+	$(INSTALL) -d $(INST_LUADIR)/apisix/lua/apisix/http
+	$(INSTALL) lua/apisix/http/*.lua $(INST_LUADIR)/apisix/lua/apisix/http/
+
 	$(INSTALL) -d $(INST_LUADIR)/apisix/lua/apisix/plugins/prometheus/
 	$(INSTALL) lua/apisix/plugins/prometheus/*.lua $(INST_LUADIR)/apisix/lua/apisix/plugins/prometheus/
 
@@ -100,5 +108,11 @@ install:
 	$(INSTALL) README.md $(INST_CONFDIR)/README.md
 	$(INSTALL) bin/apisix $(INST_BINDIR)/apisix
 
+
+### test:         Run the test case
 test:
+ifeq ($(UNAME),Darwin)
+	prove -I../test-nginx/lib -I./ -r -s t/
+else
 	prove -I../test-nginx/lib -r -s t/
+endif

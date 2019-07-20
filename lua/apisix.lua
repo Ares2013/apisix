@@ -2,11 +2,10 @@
 
 local require = require
 local core = require("apisix.core")
-local router = require("apisix.route").get
+local router = require("apisix.http.route").get
 local plugin = require("apisix.plugin")
-local load_balancer = require("apisix.balancer").run
-local service_fetch = require("apisix.service").get
-local ssl_match = require("apisix.ssl").match
+local service_fetch = require("apisix.http.service").get
+local ssl_match = require("apisix.http.ssl").match
 local admin_init = require("apisix.admin.init")
 local get_var = require("resty.ngxvar").fetch
 local ngx = ngx
@@ -15,6 +14,8 @@ local ngx_exit = ngx.exit
 local ngx_ERROR = ngx.ERROR
 local math = math
 local match_opts = {}
+local error = error
+local load_balancer
 
 
 local _M = {version = 0.1}
@@ -44,13 +45,22 @@ end
 
 
 function _M.http_init_worker()
-    require("apisix.route").init_worker()
-    require("apisix.balancer").init_worker()
-    require("apisix.plugin").init_worker()
-    require("apisix.service").init_worker()
-    require("apisix.consumer").init_worker()
+    local we = require("resty.worker.events")
+    local ok, err = we.configure({shm = "worker-events", interval = 0.1})
+    if not ok then
+        error("failed to init worker event: " .. err)
+    end
+
+    load_balancer = require("apisix.http.balancer").run
+
     require("apisix.admin.init").init_worker()
-    require("apisix.ssl").init_worker()
+
+    require("apisix.http.route").init_worker()
+    require("apisix.http.service").init_worker()
+    require("apisix.http.ssl").init_worker()
+
+    require("apisix.plugin").init_worker()
+    require("apisix.consumer").init_worker()
 end
 
 

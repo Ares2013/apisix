@@ -44,14 +44,14 @@ function _M.access(conf, ctx)
         return 500
     end
 
-    local key = (ctx.var[conf.key] or "") .. ctx.conf_version
-    local rejected_code = conf.rejected_code
+    local ip = core.request.get_remote_client_ip(ctx)
+    local key = ip .. ctx.conf_version
 
     local delay, remaining = lim:incoming(key, true)
     if not delay then
         local err = remaining
         if err == "rejected" then
-            return rejected_code
+            return conf.rejected_code
         end
 
         core.log.error("failed to limit req: ", err)

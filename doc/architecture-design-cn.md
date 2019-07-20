@@ -51,7 +51,7 @@ plugins:                        # plugin name list
 `Route` 是如何匹配用户请求的具体描述。目前 apisix 支持 `URI` 和 `Method` 两种方式匹配
 用户请求。其他比如 `Host` 方式，将会持续增加。
 
-路径中的 `key` 会被用作路由 `id` 做唯一标识，比如下面示例的路由 `id` 是 `100`。
+路径中最后的数字，会被用作路由 `id` 做唯一标识，比如下面示例的路由 `id` 是 `100`。
 
 ```shell
 curl http://127.0.0.1:9080/apisix/admin/routes/100 -X PUT -d '
@@ -73,8 +73,8 @@ curl http://127.0.0.1:9080/apisix/admin/routes/100 -X PUT -d '
 
 |name     |option   |description|
 |---------|---------|-----------|
-|uri      |required |除了静态常量匹配，这里还支持正则 `/foo/{:\w+}/{:\w+}`，更多见 [lua-resty-libr3](https://github.com/iresty/lua-resty-libr3)|
-|id       |optional |如果有，必须与路径中的 `key` 保持一致|
+|uri      |required |除了静态常量匹配，这里还支持正则 `/foo/{:\w+}/{:\w+}`，更多见 [如何使用 r3](libr3.md)|
+|id       |optional |如果有，必须与路径中最后的数字保持一致|
 |host     |optional |当前请求域名，比如 `foo.com`；也支持泛域名，比如 `*.foo.com`|
 |remote_addr|optional |客户端请求 IP 地址，比如 `192.168.1.101`；也支持 CIDR 格式，比如 `192.168.1.0/24`|
 |methods  |optional |如果为空或没有该选项，代表没有任何 `method` 限制，也可以是一个或多个组合：GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS。|
@@ -82,7 +82,6 @@ curl http://127.0.0.1:9080/apisix/admin/routes/100 -X PUT -d '
 |upstream|optional |启用的 upstream 配置，详见 [Upstream](#upstream)|
 |upstream_id|optional |启用的 upstream id，详见 [Upstream](#upstream)|
 |service_id|optional |绑定的 Service 配置，详见 [Service](#service)|
-
 
 [返回目录](#目录)
 
@@ -213,6 +212,8 @@ curl http://127.0.0.1:9080/apisix/admin/routes/102 -X PUT -d '
 上游的配置使用方法，与 `plugin` 非常相似，也可以同时被绑定到 `route` 或 `service` 上，并根据优先级决
 定执行顺序。
 
+APISIX 支持对上游的健康检查，你可以设置需要检查的 host、uri、失败和恢复的次数等。
+
 #### 配置参数
 
 * type：`roundrobin` 或 `chash`
@@ -221,6 +222,7 @@ curl http://127.0.0.1:9080/apisix/admin/routes/102 -X PUT -d '
 * nodes: 上游机器地址列表（目前仅支持 IP+Port 方式）
 * key: 该选项只有类型是 `roundrobin` 才有效。根据 `key` 来查找对应的 node `id`，相同的
 `key` 在同一个对象中，永远返回相同 id 。
+* checks: 配置健康检查的参数。
 
 创建上游对象用例：
 
@@ -278,5 +280,43 @@ curl http://127.0.0.1:9080/apisix/admin/routes/1 -X PUT -d '
     }
 }'
 ```
+
+下面是一个配置了健康检查的示例：
+```shell
+curl http://127.0.0.1:9080/apisix/admin/routes/1 -X PUT -d '
+{
+    "uri": "/index.html",
+    "plugins": {
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503,
+            "key": "remote_addr"
+        }
+    },
+    "upstream": {
+         "nodes": {
+            "39.97.63.215:80": 1
+        }
+        "type": "roundrobin",
+        "checks": {
+            "active": {
+                "http_path": "/status",
+                "host": "foo.com",
+                "healthy": {
+                    "interval": 2,
+                    "successes": 1
+                },
+                "unhealthy": {
+                    "interval": 1,
+                    "http_failures": 2
+                }
+            }
+        }
+    }
+}'
+```
+
+更多细节可以参考[健康检查的文档](health-check.md).
 
 [返回目录](#目录)

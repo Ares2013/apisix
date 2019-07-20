@@ -1,5 +1,6 @@
 -- Copyright (C) Yuansheng Wang
 
+local require = require
 local r3router = require("resty.r3")
 local core = require("apisix.core")
 local plugin = require("apisix.plugin")
@@ -80,6 +81,9 @@ function _M.init_worker()
     if not routes then
         error("failed to create etcd instance for fetching routes : " .. err)
     end
+
+
+    require("apisix.http.balancer").init_worker()
 end
 
 
