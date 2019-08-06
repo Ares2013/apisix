@@ -2,23 +2,21 @@
 
 local require = require
 local core = require("apisix.core")
-local router = require("apisix.http.route").get
 local plugin = require("apisix.plugin")
 local service_fetch = require("apisix.http.service").get
-local ssl_match = require("apisix.http.ssl").match
 local admin_init = require("apisix.admin.init")
 local get_var = require("resty.ngxvar").fetch
+local router = require("apisix.http.router")
 local ngx = ngx
 local get_method = ngx.req.get_method
 local ngx_exit = ngx.exit
 local ngx_ERROR = ngx.ERROR
 local math = math
-local match_opts = {}
 local error = error
 local load_balancer
 
 
-local _M = {version = 0.1}
+local _M = {version = 0.2}
 
 
 function _M.http_init()
@@ -54,11 +52,10 @@ function _M.http_init_worker()
     load_balancer = require("apisix.http.balancer").run
 
     require("apisix.admin.init").init_worker()
+    require("apisix.http.balancer").init_worker()
 
-    require("apisix.http.route").init_worker()
+    router.init_worker()
     require("apisix.http.service").init_worker()
-    require("apisix.http.ssl").init_worker()
-
     require("apisix.plugin").init_worker()
     require("apisix.consumer").init_worker()
 end
@@ -72,6 +69,29 @@ local function run_plugin(phase, plugins, api_ctx)
 
     plugins = plugins or api_ctx.plugins
     if not plugins then
+        return api_ctx
+    end
+
+    if phase == "balancer" then
+        local balancer_name = api_ctx.balancer_name
+        local balancer_plugin = api_ctx.balancer_plugin
+        if balancer_name and balancer_plugin then
+            local phase_fun = balancer_plugin[phase]
+            phase_fun(balancer_plugin, api_ctx)
+            return api_ctx
+        end
+
+        for i = 1, #plugins, 2 do
+            local phase_fun = plugins[i][phase]
+            if phase_fun and
+               (not balancer_name or balancer_name == plugins[i].name) then
+                phase_fun(plugins[i + 1], api_ctx)
+                if api_ctx.balancer_name == plugins[i].name then
+                    api_ctx.balancer_plugin = plugins[i]
+                    return api_ctx
+                end
+            end
+        end
         return api_ctx
     end
 
@@ -108,7 +128,7 @@ function _M.http_ssl_phase()
         ngx_ctx.api_ctx = api_ctx
     end
 
-    local ok, err = ssl_match(api_ctx)
+    local ok, err = router.router_ssl.match(api_ctx)
     if not ok then
         if err then
             core.log.error("failed to fetch ssl config: ", err)
@@ -128,15 +148,8 @@ function _M.http_access_phase()
     end
 
     core.ctx.set_vars_meta(api_ctx)
-    core.table.clear(match_opts)
-    match_opts.method = api_ctx.var.method
-    match_opts.host = api_ctx.var.host
 
-    local ok = router():dispatch2(nil, api_ctx.var.uri, match_opts, api_ctx)
-    if not ok then
-        core.log.info("not find any matched route")
-        return core.response.exit(404)
-    end
+    router.router_http.match(api_ctx)
 
     core.log.info("route: ",
                   core.json.delay_encode(api_ctx.matched_route, true))
@@ -214,6 +227,19 @@ function _M.http_balancer_phase()
         return core.response.exit(500)
     end
 
+    -- first time
+    if not api_ctx.balancer_name then
+        run_plugin("balancer", nil, api_ctx)
+        if api_ctx.balancer_name then
+            return
+        end
+    end
+
+    if api_ctx.balancer_name and api_ctx.balancer_name ~= "default" then
+        return run_plugin("balancer", nil, api_ctx)
+    end
+
+    api_ctx.balancer_name = "default"
     load_balancer(api_ctx.matched_route, api_ctx)
 end
 
