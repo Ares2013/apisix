@@ -13,6 +13,8 @@ local ngx_exit = ngx.exit
 local ngx_ERROR = ngx.ERROR
 local math = math
 local error = error
+local ngx_var = ngx.var
+local ipairs = ipairs
 local load_balancer
 
 
@@ -138,11 +140,100 @@ function _M.http_ssl_phase()
 end
 
 
+    local upstream_vars = {
+        uri        = "upstream_uri",
+        scheme     = "upstream_scheme",
+        host       = "upstream_host",
+        upgrade    = "upstream_upgrade",
+        connection = "upstream_connection",
+    }
+    local upstream_names = {}
+    for name, _ in pairs(upstream_vars) do
+        core.table.insert(upstream_names, name)
+    end
 function _M.http_access_phase()
     local ngx_ctx = ngx.ctx
     local api_ctx = ngx_ctx.api_ctx
 
-    if api_ctx == nil then
+    if not api_ctx then
+        api_ctx = core.tablepool.fetch("api_ctx", 0, 32)
+        ngx_ctx.api_ctx = api_ctx
+    end
+
+    core.ctx.set_vars_meta(api_ctx)
+
+    router.router_http.match(api_ctx)
+
+    core.log.info("matched route: ",
+                  core.json.delay_encode(api_ctx.matched_route, true))
+
+    local route = api_ctx.matched_route
+    if not route then
+        return core.response.exit(404)
+    end
+
+    --
+    if route.value.service_protocol == "grpc" then
+        return ngx.exec("@grpc_pass")
+    end
+
+    local upstream = route.value.upstream
+    if upstream then
+        for _, name in ipairs(upstream_names) do
+            if upstream[name] then
+                ngx_var[upstream_vars[name]] = upstream[name]
+            end
+        end
+
+        if upstream.enable_websocket then
+            api_ctx.var["upstream_upgrade"] = api_ctx.var["http_upgrade"]
+            api_ctx.var["upstream_connection"] = api_ctx.var["http_connection"]
+        end
+    end
+
+    if route.value.service_id then
+        -- core.log.info("matched route: ", core.json.delay_encode(route.value))
+        local service = service_fetch(route.value.service_id)
+        if not service then
+            core.log.error("failed to fetch service configuration by ",
+                           "id: ", route.value.service_id)
+            return core.response.exit(404)
+        end
+
+        local changed
+        route, changed = plugin.merge_service_route(service, route)
+        api_ctx.matched_route = route
+
+        if changed then
+            api_ctx.conf_type = "route&service"
+            api_ctx.conf_version = route.modifiedIndex .. "&"
+                                   .. service.modifiedIndex
+            api_ctx.conf_id = route.value.id .. "&"
+                              .. service.value.id
+        else
+            api_ctx.conf_type = "service"
+            api_ctx.conf_version = service.modifiedIndex
+            api_ctx.conf_id = service.value.id
+        end
+
+    else
+        api_ctx.conf_type = "route"
+        api_ctx.conf_version = route.modifiedIndex
+        api_ctx.conf_id = route.value.id
+    end
+
+    local plugins = core.tablepool.fetch("plugins", 32, 0)
+    api_ctx.plugins = plugin.filter(route, plugins)
+
+    run_plugin("rewrite", plugins, api_ctx)
+    run_plugin("access", plugins, api_ctx)
+end
+
+function _M.grpc_access_phase()
+    local ngx_ctx = ngx.ctx
+    local api_ctx = ngx_ctx.api_ctx
+
+    if not api_ctx then
         api_ctx = core.tablepool.fetch("api_ctx", 0, 32)
         ngx_ctx.api_ctx = api_ctx
     end
@@ -198,10 +289,14 @@ function _M.http_access_phase()
 end
 
 
+
 function _M.http_header_filter_phase()
     run_plugin("header_filter")
 end
 
+function _M.http_body_filter_phase()
+    run_plugin("body_filter")
+end
 
 function _M.http_log_phase()
     local api_ctx = run_plugin("log")
@@ -253,7 +348,7 @@ function _M.http_admin()
     end
 
     -- core.log.info("uri: ", get_var("uri"), " method: ", get_method())
-    local ok = router:dispatch(get_var("uri"), get_method())
+    local ok = router:dispatch(get_var("uri"), {method = get_method()})
     if not ok then
         ngx_exit(404)
     end

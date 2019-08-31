@@ -41,18 +41,26 @@ APISIX 通过插件机制，提供动态负载平衡、身份验证、限流限�
 - **[限制并发](doc/plugins/limit-conn-cn.md)**
 - **OpenTracing: [Zipkin](doc/plugins/zipkin.md)**
 - **监控和指标**: [Prometheus](doc/plugins/prometheus-cn.md)
+- **[gRPC 协议转换](doc/plugins/grpc-transcoding-cn.md)**：支持协议的转换，这样客户端可以通过 HTTP/JSON 来访问你的 gRPC API。
+- **[Serverless](doc/plugins/serverless-cn.md)**: 在 APISIX 的每一个阶段，你都可以添加并调用自己编写的函数。
 - **自定义插件**: 允许挂载常见阶段，例如`rewrite`，`access`，`header filer`，`body filter`和`log`，还允许挂载 `balancer` 阶段。
 - **控制台**: 内置控制台来操作 APISIX 集群。
+- **版本控制**：支持操作的多次回滚。
 - **CLI**: 使用命令行来启动、关闭和重启 APISIX。
 - **REST API**
-- **集群**
-- **可扩展**
+- **Proxy Websocket**
+- **IPv6**：支持使用 IPv6 格式匹配路由。
+- **集群**：APISIX 节点是无状态的，创建配置中心集群请参考 [etcd Clustering Guide](https://github.com/etcd-io/etcd/blob/master/Documentation/v2/clustering.md)。
+- **可扩展**：简单易用的插件机制方便扩展。
 - **高性能**：在单核上 QPS 可以达到 24k，同时延迟只有 0.6 毫秒。
 - **防御 ReDoS(正则表达式拒绝服务)**
-- **OAuth2.0**: TODO.
-- **ACL**: TODO.
-- **Bot detection**: TODO.
-- **IP 黑名单**: TODO.
+- **IP 黑名单**
+- **OAuth2.0**: TODO。
+- **ACL**: TODO。
+- **Bot detection**: TODO。
+
+## 在线演示版本
+我们部署了一个在线的 [dashboard](http://apisix.iresty.com) ，方便您了解 APISIX。
 
 ## 安装
 
@@ -94,6 +102,8 @@ APISIX 是基于 [openresty](http://openresty.org/) 之上构建的, 配置数�
 ```shell
 sudo luarocks install --lua-dir=/usr/local/openresty/luajit apisix
 ```
+
+如果你得到 `unknow flag --lua-dir` 这类错误，这是因为 `luarocks` 版本过低。这时我们需要移除 `lua-dir` 选项重新运行：`luarocks install apisix`。
 
 如果一切顺利，你会在最后看到这样的信息：
 

@@ -44,18 +44,26 @@ For more detailed information, see the [White Paper](https://www.iresty.com/down
 - **[Limit-concurrency](doc/plugins/limit-conn.md)**
 - **OpenTracing: [Zipkin](doc/plugins/zipkin.md)**
 - **Monitoring and Metrics**: [Prometheus](doc/plugins/prometheus.md)
+- **[gRPC transcoding](doc/plugins/grpc-transcoding.md)**：Supports protocol transcoding so that clients can access your gRPC API by using HTTP/JSON.
+- **[Serverless](doc/plugins/serverless.md)**: Invoke functions in each phase in APISIX.
 - **Custom plugins**: Allows hooking of common phases, such as `rewrite`, `access`, `header filer`, `body filter` and `log`, also allows to hook the `balancer` stage.
 - **Dashboard**: Built-in dashboard to control APISIX.
+- **Version Control**: Supports rollbacks of operations.
 - **CLI**: start\stop\reload APISIX through the command line.
 - **REST API**
-- **Clustering**
-- **Scalability**
+- **Proxy Websocket**
+- **IPv6**: allow to use IPv6 to match route.
+- **Clustering**: APISIX nodes are stateless, creates clustering of the configuration center, please refer to [etcd Clustering Guide](https://github.com/etcd-io/etcd/blob/master/Documentation/v2/clustering.md).
+- **Scalability**: plug-in mechanism is easy to extend.
 - **High performance**: The single-core QPS reaches 24k with an average delay of less than 0.6 milliseconds.
 - **Anti-ReDoS(Regular expression Denial of Service)**
+- **IP whitelist/blacklist**
 - **OAuth2.0**: TODO.
 - **ACL**: TODO.
 - **Bot detection**: TODO.
-- **IP blacklist**: TODO.
+
+## Online Demo Dashboard
+We provide an online dashboard [demo version](http://apisix.iresty.com)， make it easier for you to understand APISIX.
 
 ## Install
 
@@ -97,8 +105,11 @@ We recommend that you use [luarocks](https://luarocks.org/) to install APISIX, a
 #### Install APISIX
 
 ```shell
-sudo luarocks install --lua-dir=/usr/local/openresty/luajit apisix
+luarocks install --lua-dir=/usr/local/openresty/luajit apisix
 ```
+
+If you got some error like `unknow flag --lua-dir`, this is because `luarocks` version is too low.
+We need to remove option `lua-dir` and run again: `luarocks install apisix`.
 
 If all goes well, you will see the message like this:
 

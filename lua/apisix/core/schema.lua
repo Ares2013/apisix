@@ -1,4 +1,5 @@
 local json = require('rapidjson')
+local cjson = require('cjson.safe')
 local schema_validator = json.SchemaValidator
 local schema_doc = json.SchemaDocument
 local json_doc = json.Document
@@ -237,14 +238,39 @@ local upstream_schema = {
             enum = {"remote_addr"},
         },
         desc = {type = "string", maxLength = 256},
-        id = id_schema
+        id = id_schema,
+        scheme = {
+            description = "scheme of upstream",
+            type = "string",
+            enum = {"http", "https"},
+        },
+        host = {
+            description = "host of upstream",
+            type = "string",
+        },
+        upgrade = {
+            description = "upgrade header for upstream",
+            type = "string",
+        },
+        connection = {
+            description = "connection header for upstream",
+            type = "string",
+        },
+        uri = {
+            description = "new uri for upstream",
+            type = "string",
+        },
+        enable_websocket = {
+            description = "enable websocket for request",
+            type = "boolean",
+        }
     },
     required = {"nodes", "type"},
     additionalProperties = false,
 }
 
 
-_M.route = [[{
+local route = [[{
     "type": "object",
     "properties": {
         "methods": {
@@ -256,6 +282,9 @@ _M.route = [[{
                          "OPTIONS"]
             },
             "uniqueItems": true
+        },
+        "service_protocol": {
+            "enum": [ "grpc", "http" ]
         },
         "desc": {"type": "string", "maxLength": 256},
         "plugins": ]] .. json.encode(plugins_schema) .. [[,
@@ -273,7 +302,8 @@ _M.route = [[{
             "anyOf": [
               {"pattern": "^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}$"},
               {"pattern": "^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}]]
-              .. [[/[0-9]{1,2}$"}
+              .. [[/[0-9]{1,2}$"},
+              {"pattern": "^([a-f0-9]{0,4}:){0,8}(:[a-f0-9]{0,4}){0,8}$"}
             ]
         },
         "service_id": ]] .. json.encode(id_schema) .. [[,
@@ -288,6 +318,13 @@ _M.route = [[{
     ],
     "additionalProperties": false
 }]]
+do
+    local route_t, err = cjson.decode(route)
+    if err then
+        error("invalid route: " .. route)
+    end
+    _M.route = route_t
+end
 
 
 _M.service = {
@@ -341,6 +378,18 @@ _M.ssl = {
         }
     },
     required = {"sni", "key", "cert"},
+    additionalProperties = false,
+}
+
+
+_M.proto = {
+    type = "object",
+    properties = {
+        content = {
+            type = "string", minLength = 1, maxLength = 4096
+        }
+    },
+    required = {"content"},
     additionalProperties = false,
 }
 

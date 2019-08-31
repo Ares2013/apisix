@@ -8,6 +8,7 @@ repeat_each(1);
 log_level('info');
 no_long_string();
 no_shuffle();
+worker_connections(128);
 
 my $pwd = cwd();
 
@@ -29,6 +30,13 @@ $yaml_config =~ s/enable_heartbeat: true/enable_heartbeat: false/;
 
 add_block_preprocessor(sub {
     my ($block) = @_;
+
+    my $main_config = $block->main_config // <<_EOC_;
+worker_rlimit_core  500M;
+working_directory   $pwd;
+_EOC_
+
+    $block->set_value("main_config", $main_config);
 
     my $init_by_lua_block = $block->init_by_lua_block // <<_EOC_;
     require "resty.core"
@@ -97,11 +105,16 @@ _EOC_
     $block->set_value("http_config", $http_config);
 
     my $TEST_NGINX_HTML_DIR = $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+    my $ipv6_listen_conf = '';
+    if (defined $block->listen_ipv6) {
+        $ipv6_listen_conf = "listen \[::1\]:12345;"
+    }
 
     my $wait_etcd_sync = $block->wait_etcd_sync // 0.1;
 
     my $config = $block->config // '';
     $config .= <<_EOC_;
+        $ipv6_listen_conf
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
 
         ssl_certificate             cert/apisix.crt;
@@ -148,6 +161,32 @@ _EOC_
 
             header_filter_by_lua_block {
                 apisix.http_header_filter_phase()
+            }
+
+            body_filter_by_lua_block {
+                apisix.http_body_filter_phase()
+            }
+
+            log_by_lua_block {
+                apisix.http_log_phase()
+            }
+        }
+
+        location \@grpc_pass {
+            access_by_lua_block {
+                apisix.grpc_access_phase()
+            }
+
+            grpc_set_header   Content-Type application/grpc;
+            grpc_socket_keepalive on;
+            grpc_pass         grpc://apisix_backend;
+
+            header_filter_by_lua_block {
+                apisix.http_header_filter_phase()
+            }
+
+            body_filter_by_lua_block {
+                apisix.http_body_filter_phase()
             }
 
             log_by_lua_block {

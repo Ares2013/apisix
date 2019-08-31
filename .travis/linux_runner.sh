@@ -23,22 +23,44 @@ before_install() {
 
 do_install() {
     wget -qO - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+    sudo apt-get -y update --fix-missing
     sudo apt-get -y install software-properties-common
     sudo add-apt-repository -y "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main"
+    sudo add-apt-repository -y ppa:longsleep/golang-backports
+
     sudo apt-get update
+
     sudo apt-get install openresty-debug
+    sudo apt-get install golang
+
+    export GO111MOUDULE=on
 
     export_or_prefix
 
     sudo luarocks make --lua-dir=${OPENRESTY_PREFIX}luajit rockspec/apisix-dev-1.0-0.rockspec --tree=deps --only-deps --local
+    sudo luarocks install --lua-dir=${OPENRESTY_PREFIX}luajit lua-resty-libr3 --tree=deps --local
 
-    git clone https://github.com/openresty/test-nginx.git test-nginx
+    git clone https://github.com/iresty/test-nginx.git test-nginx
+
+    ls -l ./
+    if [ ! -f "build-cache/grpc_server_example" ]; then
+        git clone https://github.com/iresty/grpc_server_example.git grpc_server_example
+
+        cd grpc_server_example/
+        go build -o grpc_server_example main.go
+        mv grpc_server_example ../build-cache/
+        cd ..
+    fi
+
 }
 
 script() {
     export_or_prefix
     export PATH=$OPENRESTY_PREFIX/nginx/sbin:$OPENRESTY_PREFIX/luajit/bin:$OPENRESTY_PREFIX/bin:$PATH
     sudo service etcd start
+
+    ./build-cache/grpc_server_example &
+
     ./bin/apisix help
     ./bin/apisix init
     ./bin/apisix init_etcd
