@@ -1,4 +1,4 @@
-use t::APISix 'no_plan';
+use t::APISIX 'no_plan';
 
 repeat_each(1);
 no_long_string();
@@ -152,7 +152,7 @@ GET /t
 
 
 
-=== TEST 5: push route + delete
+=== TEST 5: post route + delete
 --- config
     location /t {
         content_by_lua_block {
@@ -949,7 +949,7 @@ GET /t
                  ngx.HTTP_PUT,
                  [[{
                         "methods": ["GET", "POST", "PUT", "DELETE", "PATCH",
-                                    "HEAD", "OPTIONS"],
+                                    "HEAD", "OPTIONS", "CONNECT", "TRACE"],
                         "upstream": {
                             "nodes": {
                                 "127.0.0.1:8080": 1
@@ -1077,6 +1077,161 @@ passed
                     "action": "set"
                 }]]
             )
+
+            ngx.status = code
+            ngx.say(body)
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 31: multiple hosts
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PUT,
+                [[{
+                    "uri": "/index.html",
+                    "hosts": ["foo.com", "*.bar.com"],
+                    "upstream": {
+                        "nodes": {
+                            "127.0.0.1:8080": 1
+                        },
+                        "type": "roundrobin"
+                    },
+                    "desc": "new route"
+                }]],
+                [[{
+                    "node": {
+                        "value": {
+                            "hosts": ["foo.com", "*.bar.com"]
+                        }
+                    }
+                }]]
+                )
+
+            ngx.status = code
+            ngx.say(body)
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 32: enable hosts and host together
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PUT,
+                [[{
+                    "uri": "/index.html",
+                    "host": "xxx.com",
+                    "hosts": ["foo.com", "*.bar.com"],
+                    "upstream": {
+                        "nodes": {
+                            "127.0.0.1:8080": 1
+                        },
+                        "type": "roundrobin"
+                    },
+                    "desc": "new route"
+                }]]
+                )
+
+            ngx.status = code
+            ngx.print(body)
+        }
+    }
+--- request
+GET /t
+--- error_code: 400
+--- response_body
+{"error_msg":"only one of host or hosts is allowed"}
+--- no_error_log
+[error]
+
+
+
+=== TEST 33: multiple remote_addrs
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PUT,
+                [[{
+                    "uri": "/index.html",
+                    "remote_addrs": ["127.0.0.1", "192.0.0.1/8", "::1", "fe80::/32"],
+                    "upstream": {
+                        "nodes": {
+                            "127.0.0.1:8080": 1
+                        },
+                        "type": "roundrobin"
+                    },
+                    "desc": "new route"
+                }]],
+                [[{
+                    "node": {
+                        "value": {
+                            "remote_addrs": ["127.0.0.1", "192.0.0.1/8", "::1", "fe80::/32"]
+                        }
+                    }
+                }]]
+                )
+
+            ngx.status = code
+            ngx.say(body)
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 34: multiple vars
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PUT,
+                [=[{
+                    "uri": "/index.html",
+                    "vars": [["arg_name", "==", "json"], ["arg_age", ">", 18]],
+                    "upstream": {
+                        "nodes": {
+                            "127.0.0.1:8080": 1
+                        },
+                        "type": "roundrobin"
+                    },
+                    "desc": "new route"
+                }]=],
+                [=[{
+                    "node": {
+                        "value": {
+                            "vars": [["arg_name", "==", "json"], ["arg_age", ">", 18]]
+                        }
+                    }
+                }]=]
+                )
 
             ngx.status = code
             ngx.say(body)

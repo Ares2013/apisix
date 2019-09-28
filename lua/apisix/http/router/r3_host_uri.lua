@@ -49,7 +49,12 @@ local function push_valid_route(route)
             method = route.value.methods,
             remote_addr = route.value.remote_addr,
             handler = function (params, api_ctx)
-                api_ctx.matched_params = params
+                --[[
+                    If you need to get the parameters, you need to replace the first parameter
+                    nil of dispatch2 with an empty table and open the following comment, but
+                    this will affect performance.
+                --]]
+                -- api_ctx.matched_params = params
                 api_ctx.matched_route = route
             end
         })
@@ -67,7 +72,12 @@ local function push_valid_route(route)
         method = route.value.methods,
         remote_addr = route.value.remote_addr,
         handler = function (params, api_ctx)
-            api_ctx.matched_params = params
+            --[[
+                If you need to get the parameters, you need to replace the first parameter
+                nil of dispatch2 with an empty table and open the following comment, but
+                this will affect performance.
+            --]]
+            -- api_ctx.matched_params = params
             api_ctx.matched_route = route
         end
     })
@@ -133,11 +143,12 @@ function _M.routes()
 end
 
 
-function _M.init_worker()
+function _M.init_worker(filter)
     local err
     user_routes, err = core.config.new("/routes", {
             automatic = true,
-            item_schema = core.schema.route
+            item_schema = core.schema.route,
+            filter = filter,
         })
     if not user_routes then
         error("failed to create etcd instance for fetching /routes : " .. err)

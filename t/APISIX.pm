@@ -1,4 +1,4 @@
-package t::APISix;
+package t::APISIX;
 
 use lib 'lib';
 use Cwd qw(cwd);
@@ -30,6 +30,7 @@ $yaml_config =~ s/enable_heartbeat: true/enable_heartbeat: false/;
 
 add_block_preprocessor(sub {
     my ($block) = @_;
+    my $wait_etcd_sync = $block->wait_etcd_sync // 0.1;
 
     my $main_config = $block->main_config // <<_EOC_;
 worker_rlimit_core  500M;
@@ -38,12 +39,77 @@ _EOC_
 
     $block->set_value("main_config", $main_config);
 
+    my $stream_enable = $block->stream_enable;
+    my $stream_config = $block->stream_config // <<_EOC_;
+    lua_package_path "$pwd/deps/share/lua/5.1/?.lua;$pwd/lua/?.lua;$pwd/t/?.lua;/usr/share/lua/5.1/?.lua;;";
+    lua_package_cpath "$pwd/deps/lib/lua/5.1/?.so;$pwd/deps/lib64/lua/5.1/?.so;/usr/lib64/lua/5.1/?.so;;";
+
+    lua_socket_log_errors off;
+
+    upstream apisix_backend {
+        server 127.0.0.1:1900;
+        balancer_by_lua_block {
+            apisix.stream_balancer_phase()
+        }
+    }
+
+    init_by_lua_block {
+        -- if os.getenv("APISIX_ENABLE_LUACOV") == "1" then
+        --     require("luacov.runner")("t/apisix.luacov")
+        --     jit.off()
+        -- end
+
+        require "resty.core"
+
+        apisix = require("apisix")
+        apisix.stream_init()
+    }
+
+    init_worker_by_lua_block {
+        apisix.stream_init_worker()
+    }
+
+    # fake server, only for test
+    server {
+        listen 1995;
+
+        content_by_lua_block {
+            local sock = ngx.req.socket()
+            local data = sock:receive("1")
+            ngx.say("hello world")
+        }
+    }
+_EOC_
+
+    if (defined $stream_enable) {
+        $block->set_value("stream_config", $stream_config);
+    }
+
+    my $stream_server_config = $block->stream_server_config // <<_EOC_;
+    preread_by_lua_block {
+        -- wait for etcd sync
+        ngx.sleep($wait_etcd_sync)
+        apisix.stream_preread_phase()
+    }
+
+    proxy_pass apisix_backend;
+
+    log_by_lua_block {
+        apisix.stream_log_phase()
+    }
+_EOC_
+
+    if (defined $stream_enable) {
+        $block->set_value("stream_server_config", $stream_server_config);
+    }
+
     my $init_by_lua_block = $block->init_by_lua_block // <<_EOC_;
-    require "resty.core"
     if os.getenv("APISIX_ENABLE_LUACOV") == "1" then
         require("luacov.runner")("t/apisix.luacov")
         jit.off()
     end
+
+    require "resty.core"
 
     apisix = require("apisix")
     apisix.http_init()
@@ -100,6 +166,23 @@ _EOC_
         }
     }
 
+    server {
+        listen 1983 ssl;
+        ssl_certificate             cert/apisix.crt;
+        ssl_certificate_key         cert/apisix.key;
+        lua_ssl_trusted_certificate cert/apisix.crt;
+
+        server_tokens off;
+
+        location / {
+            content_by_lua_block {
+                require("lib.server").go()
+            }
+
+            more_clear_headers Date;
+        }
+    }
+
 _EOC_
 
     $block->set_value("http_config", $http_config);
@@ -109,8 +192,6 @@ _EOC_
     if (defined $block->listen_ipv6) {
         $ipv6_listen_conf = "listen \[::1\]:12345;"
     }
-
-    my $wait_etcd_sync = $block->wait_etcd_sync // 0.1;
 
     my $config = $block->config // '';
     $config .= <<_EOC_;
@@ -197,6 +278,14 @@ _EOC_
 
     $block->set_value("config", $config);
 
+    my $user_apisix_yaml = $block->apisix_yaml // "";
+    if ($user_apisix_yaml) {
+        $user_apisix_yaml = <<_EOC_;
+>>> ../conf/apisix.yaml
+$user_apisix_yaml
+_EOC_
+    }
+
     my $user_yaml_config = $block->yaml_config // $yaml_config;
 
     my $user_files = $block->user_files;
@@ -207,6 +296,7 @@ $user_yaml_config
 $ssl_crt
 >>> ../conf/cert/apisix.key
 $ssl_key
+$user_apisix_yaml
 _EOC_
 
     $block->set_value("user_files", $user_files);

@@ -8,7 +8,7 @@ BEGIN {
     }
 }
 
-use t::APISix 'no_plan';
+use t::APISIX 'no_plan';
 
 master_on();
 repeat_each(1);
@@ -214,7 +214,7 @@ GET /t
 qr/\[error\].*/
 --- grep_error_log_out eval
 qr/Connection refused\) while connecting to upstream/
---- timeout: 5
+--- timeout: 10
 
 
 
@@ -420,7 +420,7 @@ GET /t
 qr/^.*?\[error\](?!.*process exiting).*/
 --- grep_error_log_out eval
 qr/Connection refused\) while connecting to upstream/
---- timeout: 5
+--- timeout: 10
 
 
 
@@ -481,4 +481,4 @@ qr{.*http://127.0.0.1:1960/server_port.*
 .*http://127.0.0.1:1961/server_port.*
 .*http://127.0.0.1:1961/server_port.*
 .*http://127.0.0.1:1961/server_port.*}
---- timeout: 5
+--- timeout: 10

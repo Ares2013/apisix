@@ -53,7 +53,7 @@ do
     end
 end
 
-local yaml = require("apisix.core.yaml")
+local yaml = require("tinyyaml")
 local template = require("resty.template")
 
 local ngx_tpl = [=[
@@ -64,7 +64,7 @@ worker_processes auto;
 worker_cpu_affinity auto;
 {% end %}
 
-error_log logs/error.log error;
+error_log logs/error.log {*error_log.level or "error"*};
 pid logs/nginx.pid;
 
 worker_rlimit_nofile 20480;
@@ -78,6 +78,53 @@ worker_rlimit_core  500M;
 working_directory   /tmp/apisix_cores/;
 
 worker_shutdown_timeout 3;
+
+{% if stream_proxy then %}
+stream {
+    lua_package_path  "$prefix/deps/share/lua/5.1/?.lua;]=]
+                      .. [=[{*apisix_lua_home*}/lua/?.lua;;{*lua_path*};";
+    lua_package_cpath "$prefix/deps/lib64/lua/5.1/?.so;]=]
+                      .. [=[$prefix/deps/lib/lua/5.1/?.so;;]=]
+                      .. [=[{*lua_cpath*};";
+    lua_socket_log_errors off;
+
+    upstream apisix_backend {
+        server 127.0.0.1:80;
+        balancer_by_lua_block {
+            apisix.stream_balancer_phase()
+        }
+    }
+
+    init_by_lua_block {
+        require "resty.core"
+        apisix = require("apisix")
+        apisix.stream_init()
+    }
+
+    init_worker_by_lua_block {
+        apisix.stream_init_worker()
+    }
+
+    server {
+        {% for _, port in ipairs(stream_proxy.tcp or {}) do %}
+        listen {*port*};
+        {% end %}
+        {% for _, port in ipairs(stream_proxy.udp or {}) do %}
+        listen {*port*} udp;
+        {% end %}
+
+        preread_by_lua_block {
+            apisix.stream_preread_phase()
+        }
+
+        proxy_pass apisix_backend;
+
+        log_by_lua_block {
+            apisix.stream_log_phase()
+        }
+    }
+}
+{% end %}
 
 http {
     lua_package_path  "$prefix/deps/share/lua/5.1/?.lua;]=]
@@ -103,7 +150,7 @@ http {
 
     lua_socket_log_errors off;
 
-    resolver ipv6=off local=on;
+    resolver {% for _, dns_addr in ipairs(dns_resolver or {}) do %} {*dns_addr*} {% end %} ipv6=off local=on;
     resolver_timeout 5;
 
     lua_http10_buffering off;
@@ -161,6 +208,24 @@ http {
                 apisix.http_admin()
             }
         }
+
+        location /apisix/dashboard {
+            index index.html;
+            {%if allow_admin then%}
+                {% for _, allow_ip in ipairs(allow_admin) do %}
+                allow {*allow_ip*};
+                {% end %}
+                deny all;
+            {%end%}
+
+            alias dashboard/;
+
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Real-PORT $remote_port;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            try_files $uri $uri/ /index.html;
+        }
     }
     {% end %}
 
@@ -197,13 +262,8 @@ http {
                 apisix.http_admin()
             }
         }
-        {% end %}
 
-        ssl_certificate_by_lua_block {
-            apisix.http_ssl_phase()
-        }
-
-        location /apisix/dashboard/ {
+        location /apisix/dashboard {
             index index.html;
             {%if allow_admin then%}
                 {% for _, allow_ip in ipairs(allow_admin) do %}
@@ -219,6 +279,11 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
             try_files $uri $uri/ /index.html;
+        }
+        {% end %}
+
+        ssl_certificate_by_lua_block {
+            apisix.http_ssl_phase()
         }
 
         location / {
@@ -397,6 +462,7 @@ local function init()
         apisix_lua_home = apisix_home,
         with_module_status = with_module_status,
         node_ssl_listen = 9443,     -- default value
+        error_log = {level = "warn"},
     }
     for k,v in pairs(yaml_conf.apisix) do
         sys_conf[k] = v
@@ -438,7 +504,7 @@ local function init_etcd(show_output)
 
     for _, dir_name in ipairs({"/routes", "/upstreams", "/services",
                                "/plugins", "/consumers", "/node_status",
-                               "/ssl"}) do
+                               "/ssl", "/global_rules", "/stream_routes"}) do
         local cmd = "curl " .. uri .. dir_name
                     .. "?prev_exist=false -X PUT -d dir=true "
                     .. "--connect-timeout " .. timeout
