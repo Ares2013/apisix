@@ -41,6 +41,7 @@ For more detailed information, see the [White Paper](https://www.iresty.com/down
 - **[Limit-req](doc/plugins/limit-req.md)**
 - **[Limit-count](doc/plugins/limit-count.md)**
 - **[Limit-concurrency](doc/plugins/limit-conn.md)**
+- **[Proxy Rewrite](doc/plugins/proxy-rewrite.md)**: Support for rewriting the `host`, `uri`, `schema`, `enable_websocket` information upstream of the request.
 - **OpenTracing: [support Apache Skywalking and Zipkin](doc/plugins/zipkin.md)**
 - **Monitoring And Metrics**: [Prometheus](doc/plugins/prometheus.md)
 - **[gRPC transcoding](doc/plugins/grpc-transcoding.md)**：Supports protocol transcoding so that clients can access your gRPC API by using HTTP/JSON.
@@ -72,14 +73,12 @@ We provide an online dashboard [demo version](http://apisix.iresty.com)， make 
 
 APISIX Installed and tested in the following systems, and the version of OpenResty MUST >= 1.15.8.1:
 
-| OS           |
-| ------------ |
-| CentOS 7     |
-| Ubuntu 16.04 |
-| Ubuntu 18.04 |
-| Debian 9     |
-| Debian 10    |
-| Mac OSX      |
+* CentOS 7
+* Ubuntu 16.04
+* Ubuntu 18.04
+* Debian 9
+* Debian 10
+* Mac OSX
 
 You now have four ways to install APISIX:
 - if you are using CentOS 7, it is recommended to use [RPM](#install-from-rpm-for-centos-7);
@@ -97,7 +96,7 @@ sudo yum-config-manager --add-repo https://openresty.org/package/centos/openrest
 sudo yum install -y openresty etcd
 sudo service etcd start
 
-sudo yum install -y https://github.com/iresty/apisix/releases/download/v0.7/apisix-0.7-0.el7.noarch.rpm
+sudo yum install -y https://github.com/iresty/apisix/releases/download/v0.8/apisix-0.8-0.el7.noarch.rpm
 ```
 
 You can try APISIX with the [**Quickstart**](#quickstart) now.
