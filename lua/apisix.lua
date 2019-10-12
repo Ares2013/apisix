@@ -11,7 +11,6 @@ local ipmatcher     = require("resty.ipmatcher")
 local ngx           = ngx
 local get_method    = ngx.req.get_method
 local ngx_exit      = ngx.exit
-local ngx_ERROR     = ngx.ERROR
 local math          = math
 local error         = error
 local ipairs        = ipairs
@@ -70,6 +69,8 @@ function _M.http_init_worker()
     if core.config == require("apisix.core.config_yaml") then
         core.config.init_worker()
     end
+
+    require("apisix.debug").init_worker()
 end
 
 
@@ -140,12 +141,11 @@ function _M.http_ssl_phase()
         ngx_ctx.api_ctx = api_ctx
     end
 
-    local ok, err = router.router_ssl.match(api_ctx)
+    local ok, err = router.router_ssl.match_and_set(api_ctx)
     if not ok then
         if err then
-            core.log.error("failed to fetch ssl config: ", err)
+            core.log.warn("failed to fetch ssl config: ", err)
         end
-        return ngx_exit(ngx_ERROR)
     end
 end
 

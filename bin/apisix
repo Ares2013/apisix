@@ -44,12 +44,16 @@ end
 -- print("apisix_home: ", apisix_home)
 
 do
-    local ok, json = pcall(require, "cjson")
-    if ok and json then
-        io.stderr:write("please remove the cjson library in Lua, it may "
-                        .. "conflict with the cjson library in openresty. "
-                        .. "\n luarocks remove cjson\n")
-        return
+    -- skip luajit environment
+    local ok = pcall(require, "table.new")
+    if not ok then
+        local ok, json = pcall(require, "cjson")
+        if ok and json then
+            io.stderr:write("please remove the cjson library in Lua, it may "
+                            .. "conflict with the cjson library in openresty. "
+                            .. "\n luarocks remove cjson\n")
+            return
+        end
     end
 end
 
@@ -231,14 +235,24 @@ http {
 
     server {
         listen {* node_listen *};
-        listen {* node_ssl_listen *} ssl;
+        {% if ssl.enable then %}
+        listen {* ssl.listen_port *} ssl {% if ssl.enable_http2 then %} http2 {% end %};
+        {% end %}
+
         {% if enable_ipv6 then %}
         listen [::]:{* node_listen *};
-        listen [::]:{* node_ssl_listen *} ssl;
+        {% if ssl.enable then %}
+        listen [::]:{* node_ssl_listen *} ssl {% if ssl.enable_http2 then %} http2 {% end %};
         {% end %}
+        {% end %} {% -- if enable_ipv6 %}
+
         ssl_certificate      cert/apisix.crt;
         ssl_certificate_key  cert/apisix.key;
         ssl_session_cache    shared:SSL:1m;
+
+        ssl_protocols {* ssl.ssl_protocols *};
+        ssl_ciphers {* ssl.ssl_ciphers *};
+        ssl_prefer_server_ciphers on;
 
         {% if with_module_status then %}
         location = /apisix/nginx_status {

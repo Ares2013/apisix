@@ -41,7 +41,7 @@ For more detailed information, see the [White Paper](https://www.iresty.com/down
 - **[Limit-req](doc/plugins/limit-req.md)**
 - **[Limit-count](doc/plugins/limit-count.md)**
 - **[Limit-concurrency](doc/plugins/limit-conn.md)**
-- **[Proxy Rewrite](doc/plugins/proxy-rewrite.md)**: Support for rewriting the `host`, `uri`, `schema`, `enable_websocket` information upstream of the request.
+- **[Proxy Rewrite](doc/plugins/proxy-rewrite.md)**: Support for rewriting the `host`, `uri`, `schema`, `enable_websocket`, `headers` information upstream of the request.
 - **OpenTracing: [support Apache Skywalking and Zipkin](doc/plugins/zipkin.md)**
 - **Monitoring And Metrics**: [Prometheus](doc/plugins/prometheus.md)
 - **[gRPC transcoding](doc/plugins/grpc-transcoding.md)**：Supports protocol transcoding so that clients can access your gRPC API by using HTTP/JSON.
@@ -78,11 +78,11 @@ APISIX Installed and tested in the following systems, and the version of OpenRes
 * Ubuntu 18.04
 * Debian 9
 * Debian 10
-* Mac OSX
+* macOS
 
 You now have four ways to install APISIX:
 - if you are using CentOS 7, it is recommended to use [RPM](#install-from-rpm-for-centos-7);
-- if using MacOS, only support git clone and install by manual, please take a look at [dev manual](doc/dev-manual.md);
+- if using macOS, only support git clone and install by manual, please take a look at [dev manual](doc/dev-manual.md);
 - other systems please use [Luarocks](#install-from-luarocks-not-support-macos);
 - You can also install from [Docker image](https://github.com/iresty/docker-apisix).
 
@@ -101,7 +101,7 @@ sudo yum install -y https://github.com/iresty/apisix/releases/download/v0.8/apis
 
 You can try APISIX with the [**Quickstart**](#quickstart) now.
 
-### Install from Luarocks (not support MacOS)
+### Install from Luarocks (not support macOS)
 
 ##### Dependencies
 
@@ -178,9 +178,7 @@ You can view the [benchmark documentation](doc/benchmark.md) for more detailed i
 
 ## Architecture Design
 
-English Development Documentation: TODO
-
-[中文开发文档](doc/architecture-design-cn.md)
+[Development Documentation](doc/architecture-design.md)
 
 ## Videos and slides
 
