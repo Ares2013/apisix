@@ -282,7 +282,7 @@ local route = {
                 type = "array",
                 items = {
                     maxItems = 3,
-                    mixItems = 2,
+                    minItems = 2,
                     anyOf = {
                         {type = "string",},
                         {type = "number",},
@@ -352,10 +352,10 @@ _M.ssl = {
     type = "object",
     properties = {
         cert = {
-            type = "string", minLength = 128, maxLength = 4096
+            type = "string", minLength = 128, maxLength = 64*1024
         },
         key = {
-            type = "string", minLength = 128, maxLength = 4096
+            type = "string", minLength = 128, maxLength = 64*1024
         },
         sni = {
             type = "string",
