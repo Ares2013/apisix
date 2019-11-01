@@ -1,8 +1,27 @@
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
+
 [中文](README_CN.md)
 ## APISIX
 
-[![Build Status](https://travis-ci.org/iresty/apisix.svg?branch=master)](https://travis-ci.org/iresty/apisix)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/iresty/apisix/blob/master/LICENSE)
+[![Build Status](https://travis-ci.org/apache/incubator-apisix.svg?branch=master)](https://travis-ci.org/apache/incubator-apisix)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/apache/incubator-apisix/blob/master/LICENSE)
 
 - **QQ group**: 552030619
 - [![Gitter](https://badges.gitter.im/apisix/community.svg)](https://gitter.im/apisix/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
@@ -43,6 +62,7 @@ For more detailed information, see the [White Paper](https://www.iresty.com/down
 - **[Proxy Rewrite](doc/plugins/proxy-rewrite.md)**: Support for rewriting the `host`, `uri`, `schema`, `enable_websocket`, `headers` information upstream of the request.
 - **OpenTracing: [support Apache Skywalking and Zipkin](doc/plugins/zipkin.md)**
 - **Monitoring And Metrics**: [Prometheus](doc/plugins/prometheus.md)
+- **[gRPC proxy](doc/grpc-proxy.md)**：Proxying gRPC traffic.
 - **[gRPC transcoding](doc/plugins/grpc-transcoding.md)**：Supports protocol transcoding so that clients can access your gRPC API by using HTTP/JSON.
 - **[Serverless](doc/plugins/serverless.md)**: Invoke functions in each phase in APISIX.
 - **Custom plugins**: Allows hooking of common phases, such as `rewrite`, `access`, `header filer`, `body filter` and `log`, also allows to hook the `balancer` stage.
@@ -96,7 +116,7 @@ sudo yum-config-manager --add-repo https://openresty.org/package/centos/openrest
 sudo yum install -y openresty etcd
 sudo service etcd start
 
-sudo yum install -y https://github.com/iresty/apisix/releases/download/v0.8/apisix-0.8-0.el7.noarch.rpm
+sudo yum install -y https://github.com/apache/incubator-apisix/releases/download/v0.8/apisix-0.8-0.el7.noarch.rpm
 ```
 
 You can try APISIX with the [**Quickstart**](#quickstart) now.
@@ -116,10 +136,10 @@ APISIX is installed by running the following commands in your terminal.
 > install the master branch via curl
 
 ```shell
-sudo sh -c "$(curl -fsSL https://raw.githubusercontent.com/iresty/apisix/master/utils/install-apisix.sh)"
+sudo sh -c "$(curl -fsSL https://raw.githubusercontent.com/apache/incubator-apisix/master/utils/install-apisix.sh)"
 ```
 
-> install the specified version via Luarock: 
+> install the specified version via Luarock:
 
 ```shell
 # install apisix with version v0.8
@@ -163,6 +183,16 @@ you can follow the [documentation of limit count](doc/plugins/limit-count.md).
 
 Then you can try more [plugins](doc/README.md#plugins).
 
+## Deploy to the Cloud
+
+### AWS
+
+The recommended approach is to deploy APISIX with [AWS CDK](https://aws.amazon.com/cdk/) on [AWS Fargate](https://aws.amazon.com/fargate/) which helps you decouple the APISIX layer and the upstream layer on top of a fully-managed and secure serverless container compute environment with autoscaling capabilities.
+
+See [this guide](https://github.com/pahud/cdk-samples/blob/master/typescript/apisix/README.md) by [Pahud Hsieh](https://github.com/pahud) and learn how to provision the recommended architecture 100% in AWS CDK.
+
+
+
 ## Dashboard
 
 APISIX has the built-in dashboard，open `http://127.0.0.1:9080/apisix/dashboard/` with a browser and try it.
@@ -181,11 +211,13 @@ You can view the [benchmark documentation](doc/benchmark.md) for more detailed i
 
 [Development Documentation](doc/architecture-design.md)
 
-## Videos and slides
+## Videos And Articles
 
-- [APISIX technology selection, testing and continuous integration(Chinese)](https://www.upyun.com/opentalk/432.html)
+- 2019.10.30 [Introduction to Apache APISIX Microservice Gateway Extreme Performance Architecture(Chinese)](https://www.upyun.com/opentalk/440.html) .
+- 2019.8.31 [APISIX technology selection, testing and continuous integration(Chinese)](https://www.upyun.com/opentalk/433.html) .
+- 2019.8.31 [APISIX high performance practice 2(Chinese)](https://www.upyun.com/opentalk/437.html) .
+- 2019.7.6 [APISIX high performance practice(Chinese)](https://www.upyun.com/opentalk/429.html) .
 
-- [APISIX high performance practice(Chinese)](https://www.upyun.com/opentalk/429.html)
 
 ## Who Uses APISIX?
 A wide variety of companies and organizations use APISIX for research, production and commercial product.
