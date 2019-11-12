@@ -15,12 +15,12 @@
 -- limitations under the License.
 --
 package = "apisix"
-version = "master-0"
+version = "0.9-rc1"
 supported_platforms = {"linux", "macosx"}
 
 source = {
     url = "git://github.com/apache/incubator-apisix",
-    branch = "master",
+    branch = "0.9-rc1",
 }
 
 description = {
@@ -40,14 +40,13 @@ dependencies = {
     "lua-resty-cookie = 0.1.0",
     "lua-resty-session = 2.24",
     "opentracing-openresty = 0.1",
-    "lua-resty-radixtree = 1.6-1",
+    "lua-resty-radixtree = 1.5",
     "lua-protobuf = 0.3.1",
     "lua-resty-openidc = 1.7.2-1",
     "luafilesystem = 1.7.0-2",
     "lua-tinyyaml = 0.1",
     "iresty-nginx-lua-prometheus = 0.20190917",
     "jsonschema = 0.4",
-    "lua-resty-ipmatcher = 0.3",
 }
 
 build = {

@@ -19,9 +19,48 @@
 
 # Table of Contents
 
+- [0.9.0-RC1](#090-rc1)
 - [0.8.0](#080)
 - [0.7.0](#070)
 - [0.6.0](#060)
+
+
+## 0.9.0-RC1
+> Released on 2019/11/11
+
+这个版本带来很多新特性，比如支持使用 Tengine 运行 APISIX，增加了对开发人员更友好的高级调试模式，还有新的URI重定向插件等。
+
+### Core
+- :sunrise: 支持使用 Tengine 运行 APISIX。 [#683](https://github.com/apache/incubator-apisix/pull/683)
+- :sunrise: 启用 HTTP2 并支持设置 ssl_protocols。 [#663](https://github.com/apache/incubator-apisix/pull/663)
+- :sunrise: 增加高级调试模式，可在不重启的服务的情况下动态打印指定模块方法的请求参数或返回值。[#614](https://github.com/apache/incubator-apisix/pull/641)
+- 安装程序增加了仪表盘开关，支持用户自主选择是否安装仪表板程序。 [#686](https://github.com/apache/incubator-apisix/pull/686)
+- 取消对 R3 路由的支持，并移除 R3 路由模块。 [#725](https://github.com/apache/incubator-apisix/pull/725)
+
+
+### Plugins
+- :sunrise: **[Redirect URI](https://github.com/apache/incubator-apisix/blob/master/doc/plugins/redirect.md)**：【新插件】URI 重定向插件。 [#732](https://github.com/apache/incubator-apisix/pull/732)
+- [Proxy Rewrite](https://github.com/apache/incubator-apisix/blob/master/doc/plugins/proxy-rewrite.md)：【新增功能】支持 `header` 删除功能。 [#658](https://github.com/apache/incubator-apisix/pull/658)
+- [Limit Count](https://github.com/apache/incubator-apisix/blob/master/doc/plugins/limit-count.md)：【新增功能】通过 `Redis Server` 聚合 `APISIX` 节点之间将共享流量限速结果，实现集群流量限速。[#624](https://github.com/apache/incubator-apisix/pull/624)
+
+### lua-resty-*
+- lua-resty-radixtree
+    - 【新增功能】支持将`host + uri`作为索引。
+- lua-resty-jsonschema
+    - 【新增扩展】该扩展作用是JSON数据验证器，用于替换现有的 `lua-rapidjson` 扩展。
+
+### Bugfix
+- 【问题】在多个使用者的情况下，`key-auth` 插件无法正确运行。 [#826](https://github.com/apache/incubator-apisix/pull/826)
+- 【问题】无法在 `API Server` 中获取 `serverless`插件配置。 [#787](https://github.com/apache/incubator-apisix/pull/787)
+- 【问题】解决使用 `proxy-write` 重写URI时GET参数丢失问题。 [#642](https://github.com/apache/incubator-apisix/pull/642)
+- 【问题】`Zipkin` 插件未将跟踪数据设置为请求头. [#715](https://github.com/apache/incubator-apisix/pull/715)
+- 【优化】使用本地文件作为配置中心时，跳过 etcd 初始化。 [#737](https://github.com/apache/incubator-apisix/pull/737)
+- 【优化】在APISIX CLI中跳过 luajit 环境的`check cjson`。[#652](https://github.com/apache/incubator-apisix/pull/652)
+- 【优化】配置 `Upstream` 时，选择 `balancer` 类型为 `chash` 时，支持更多Nginx内置变量作为计算key。 [#775](https://github.com/apache/incubator-apisix/pull/775)
+
+
+### Dependencies
+- 使用 `lua-resty-jsonschema` 全局替换 `lua-rapidjson` 扩展，`lua-resty-jsonschema` 解析速度更快，更容易编译。
 
 
 ## 0.8.0
@@ -34,7 +73,7 @@
 - :sunrise: **[支持 stream 代理](https://github.com/apache/incubator-apisix/blob/master/doc/stream-proxy-cn.md)**. [#513](https://github.com/apache/incubator-apisix/pull/513)
 - :sunrise: 支持[在 consumer 上绑定插件](https://github.com/apache/incubator-apisix/blob/master/doc/architecture-design-cn.md#consumer). [#544](https://github.com/apache/incubator-apisix/pull/544)
 - 上游增加对域名的支持，而不仅是 IP。[#522](https://github.com/apache/incubator-apisix/pull/522)
-- 当上游节点的权重为 0 是自动忽略。[#536](https://github.com/apache/incubator-apisix/pull/536)
+- 当上游节点的权重为 0 时自动忽略。[#536](https://github.com/apache/incubator-apisix/pull/536)
 
 ### Plugins
 - :sunrise: **[MQTT 代理](https://github.com/apache/incubator-apisix/blob/master/doc/plugins/mqtt-proxy-cn.md)**: 支持用 `client_id` 对 MQTT 进行负载均衡，同时支持 MQTT 3.1 和 5.0 两个协议标准。 [#513](https://github.com/apache/incubator-apisix/pull/513)
@@ -54,7 +93,7 @@
 
 
 ### Bugfix
-- 健康检查: 修复在多 worker 下运行的话，健康检查 checker 的名字错误。 [#568](https://github.com/apache/incubator-apisix/issues/568)
+- 健康检查: 修复在多 worker 下运行时健康检查 checker 的名字错误。 [#568](https://github.com/apache/incubator-apisix/issues/568)
 
 ### Dependencies
 - 把 `lua-tinyyaml` 从源码中移除，通过 Luarocks 来安装。
