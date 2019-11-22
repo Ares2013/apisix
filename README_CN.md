@@ -60,6 +60,7 @@ APISIX 通过插件机制，提供动态负载平衡、身份验证、限流限�
 - **[限制请求数](doc/plugins/limit-count-cn.md)**
 - **[限制并发](doc/plugins/limit-conn-cn.md)**
 - **[代理请求重写](doc/plugins/proxy-rewrite.md)**: 支持重写请求上游的`host`、`uri`、`schema`、`enable_websocket`、`headers`信息。
+- **[输出内容重写](doc/plugins/response-rewrite.md)**: 支持自定义修改返回内容的 `status code`、`body`、`headers`。
 - **OpenTracing: [支持 Apache Skywalking 和 Zipkin](doc/plugins/zipkin.md)**
 - **监控和指标**: [Prometheus](doc/plugins/prometheus-cn.md)
 - **[gRPC 代理](doc/grpc-proxy-cn.md)**：通过 APISIX 代理 gRPC 连接，并使用 APISIX 的大部分特性管理你的 gRPC 服务。
@@ -122,7 +123,8 @@ APISIX 在以下操作系统中可顺利安装并做过运行测试，需要注�
 sudo yum install yum-utils
 sudo yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo
 sudo yum install -y openresty etcd
-sudo service etcd start
+
+sudo systemctl start etcd
 
 sudo yum install -y https://github.com/apache/incubator-apisix/releases/download/v0.8/apisix-0.8-0.el7.noarch.rpm
 ```

@@ -73,6 +73,7 @@ For more detailed information, see the [White Paper](https://www.iresty.com/down
 - **CLI**: start\stop\reload APISIX through the command line.
 - **REST API**
 - **Proxy Websocket**
+- **[Response Rewrite](doc/plugins/response-rewrite.md)**: Set customized response status code, body and header to the client.
 - **IPv6**: Use IPv6 to match route.
 - **Clustering**: APISIX nodes are stateless, creates clustering of the configuration center, please refer to [etcd Clustering Guide](https://github.com/etcd-io/etcd/blob/master/Documentation/v2/clustering.md).
 - **Scalability**: plug-in mechanism is easy to extend.
@@ -125,7 +126,7 @@ The main steps to install APISIX:
 sudo yum install yum-utils
 sudo yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo
 sudo yum install -y openresty etcd
-sudo service etcd start
+sudo systemctl start etcd
 
 sudo yum install -y https://github.com/apache/incubator-apisix/releases/download/v0.8/apisix-0.8-0.el7.noarch.rpm
 ```
