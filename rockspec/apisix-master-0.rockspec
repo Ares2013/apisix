@@ -46,8 +46,8 @@ dependencies = {
     "luafilesystem = 1.7.0-2",
     "lua-tinyyaml = 0.1",
     "lua-resty-prometheus = 1.0",
-    "jsonschema = 0.4",
-    "lua-resty-ipmatcher = 0.3",
+    "jsonschema = 0.5",
+    "lua-resty-ipmatcher = 0.4",
 }
 
 build = {

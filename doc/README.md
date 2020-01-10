@@ -49,10 +49,10 @@ Plugins
 * [proxy-rewrite](plugins/proxy-rewrite.md): Rewrite upstream request information.
 * [prometheus](plugins/prometheus.md): Expose metrics related to APISIX and proxied upstream services in Prometheus exposition format, which can be scraped by a Prometheus Server.
 * [OpenTracing](plugins/zipkin.md): Supports Zikpin and Apache SkyWalking.
-* [grpc-transcode](plugins/grpc-transcoding.md): REST <--> gRPC transcoding。
+* [grpc-transcode](plugins/grpc-transcoding.md): REST <--> gRPC transcoding.
 * [serverless](plugins/serverless.md)：Allows to dynamically run Lua code at *different* phase in APISIX.
 * [ip-restriction](plugins/ip-restriction.md): IP whitelist/blacklist.
-* openid-connect
+* [openid-connect](plugins/oauth.md)
 * [redirect](plugins/redirect.md): URI redirect.
 * [response-rewrite](plugins/response-rewrite.md): Set customized response status code, body and header to the client.
 
