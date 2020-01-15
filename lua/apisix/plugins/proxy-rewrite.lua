@@ -30,7 +30,8 @@ local schema = {
             description = "new uri for upstream",
             type        = "string",
             minLength   = 1,
-            maxLength   = 4096
+            maxLength   = 4096,
+            pattern     = "^/.*",
         },
         regex_uri = {
             description = "new uri that substitute from client uri " ..
@@ -90,7 +91,6 @@ function _M.check_schema(conf)
                             ", " .. conf.regex_uri[2] .. "): " .. err
         end
     end
-
 
     --reform header from object into array, so can avoid use pairs, which is NYI
     if conf.headers then

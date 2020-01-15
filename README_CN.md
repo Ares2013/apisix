@@ -82,7 +82,7 @@ A/B 测试、金丝雀发布(灰度发布)、蓝绿部署、限流限速、抵�
     - [支持路由的优先级](doc/router-radixtree.md#3-match-priority)
 
 - **安全防护**
-    - 多种身份认证方式: [key-auth](doc/plugins/key-auth-cn.md), [JWT](doc/plugins/jwt-auth-cn.md)。
+    - 多种身份认证方式: [key-auth](doc/plugins/key-auth-cn.md), [JWT](doc/plugins/jwt-auth-cn.md), [basic-auth](doc/plugins/basic-auth-cn.md)。
     - [IP 黑白名单](doc/plugins/ip-restriction-cn.md)
     - [IdP 支持](doc/plugins/oauth.md): 支持外部的身份认证服务，比如 Auth0，Okta，Authing 等，用户可以借此来对接 Oauth2.0 等认证方式。
     - [限制速率](doc/plugins/limit-req-cn.md)
@@ -101,6 +101,7 @@ A/B 测试、金丝雀发布(灰度发布)、蓝绿部署、限流限速、抵�
     - 全局规则：允许对所有请求执行插件，比如黑白名单、限流限速等。
     - 高性能：在单核上 QPS 可以达到 18k，同时延迟只有 0.2 毫秒。
     - [REST admin API](doc/admin-api-cn.md)
+    - 故障注入
 
 - **高度可扩展**
     - [自定义插件](doc/plugin-develop-cn.md): 允许挂载常见阶段，例如`init`, `rewrite`，`access`，`balancer`,`header filer`，`body filter` 和 `log` 阶段。
@@ -143,7 +144,7 @@ APISIX 内置了对 Dashboard 的支持，使用步骤如下：
 ```
 git clone https://github.com/apache/incubator-apisix-dashboard.git
 ```
-
+- 安装yarn: 参考[安装文档](https://yarnpkg.com/zh-Hans/docs/install)
 - 安装依赖并构建
 ```
 yarn
@@ -165,28 +166,33 @@ Dashboard 默认允许任何 IP 访问。你可以自行修改 `conf/config.yaml
 
 ## 文档
 
-[文档](doc/README_CN.md)
+[Apache APISIX 文档索引](doc/README_CN.md)
 
 ## Apache APISIX 和 Kong 的比较
 
-#### 核心功能点，两者都已经覆盖
+#### API 网关核心功能点，两者均已覆盖
 
-| **功能**   | **动态上游**   | **健康检查和熔断器**   | **动态SSL证书**   | **七层和四层代理**   | **分布式追踪**   | **自定义插件**   | **REST API**   | **CLI**   |
-|:----|:----|:----|:----|:----|:----|:----|:----|:----|
-| **Apache APISIX**   | 支持   | 支持   | 支持   | 支持   | 支持   | 支持   | 支持   | 支持   |
-| **Kong**   | 支持   | 支持   | 支持   | 支持   | 支持   | 支持   | 支持   | 支持   |
+| **功能**   | **Apache APISIX**   | **KONG**   |
+|:----|:----|:----|
+| **动态上游**  | 支持   | 支持   |
+| **动态路由**  | 支持   | 支持   |
+| **健康检查和熔断器**  | 支持   | 支持   |
+| **动态SSL证书**  | 支持   | 支持   |
+| **七层和四层代理**  | 支持   | 支持   |
+| **分布式追踪**  | 支持   | 支持   |
+| **自定义插件**  | 支持   | 支持   |
+| **REST API**  | 支持   | 支持   |
+| **CLI**  | 支持   | 支持   |
 
 #### Apache APISIX 的优势
 
 | **功能**   | **Apache APISIX**   | **KONG**   |
 |:----|:----|:----|
-| 项目归属   | Apache 基金会   | Kong Inc.   |
+| 项目归属   | Apache 软件基金会   | Kong Inc.   |
 | 技术架构   | Nginx + etcd   | Nginx + postgres   |
 | 交流渠道  | 微信群、QQ群、邮件列表、Github、meetup   | Github、论坛、freenode   |
-| 单核 QPS(开启限流和prometheus插件)   | 18000   | 1700   |
+| 单核 QPS (开启限流和prometheus插件)   | 18000   | 1700   |
 | 平均延迟  | 0.2 毫秒   | 2 毫秒   |
-| 完整 IPv6 协议支持   | 是   | 否   |
-| 支持 ARM64   | 是   | 否   |
 | 支持 Dubbo 代理   | 是   | 否   |
 | 配置回滚   | 是   | 否   |
 | 支持生命周期的路由   | 是   | 否   |
@@ -195,11 +201,12 @@ Dashboard 默认允许任何 IP 访问。你可以自行修改 `conf/config.yaml
 | resty <--> gRPC 转码   | 是   | 否   |
 | 支持 Tengine 作为运行时   | 是   | 否   |
 | MQTT 协议支持   | 是   | 否   |
-| 配置生效时间   | 事件通知，低于1毫秒更新   | 定期轮询，10 秒   |
+| 配置生效时间   | 事件通知，低于1毫秒更新   | 定期轮询，5 秒   |
 | 自带控制台   | 是   | 否   |
 | 对接外部身份认证服务   | 是   | 否   |
 | 配置中心高可用(HA)   | 是   | 否   |
 | 指定时间窗口的限速   | 是   | 否   |
+| 支持任何 Nginx 变量做路由条件 | 是   | 否   |
 
 
 ## 视频和文章

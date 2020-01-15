@@ -82,7 +82,7 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
     - [Support priority](doc/router-radixtree.md#3-match-priority)
 
 - **Security**
-    - Authentications: [key-auth](doc/plugins/key-auth.md), [JWT](doc/plugins/jwt-auth.md)
+    - Authentications: [key-auth](doc/plugins/key-auth.md), [JWT](doc/plugins/jwt-auth.md), [basic-auth](doc/plugins/basic-auth.md)
     - [IP Whitelist/Blacklist](doc/plugins/ip-restriction.md)
     - [IdP](doc/plugins/oauth.md): Support external authentication services, such as Auth0, okta, etc., users can use this to connect to Oauth2.0 and other authentication methods.
     - [Limit-req](doc/plugins/limit-req.md)
@@ -101,6 +101,7 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
     - Global Rule: Allows to run any plugin for all request, eg: limit rate, IP filter etc.
     - High performance: The single-core QPS reaches 18k with an average delay of less than 0.2 milliseconds.
     - [REST admin API](doc/admin-api.md)
+    - fault injection
 
 - **Highly scalable**
     - [Custom plugins]((doc/plugin-develop.md)): Allows hooking of common phases, such as `rewrite`, `access`, `header filer`, `body filter` and `log`, also allows to hook the `balancer` stage.
@@ -143,7 +144,7 @@ APISIX has built-in support for dashboards, as follows:
 ```
 git clone https://github.com/apache/incubator-apisix-dashboard.git
 ```
-
+- install yarn: refer to [documentation](https://yarnpkg.com/en/docs/install)
 - Install dependencies and build
 ```
 yarn
@@ -164,27 +165,32 @@ We provide an online dashboard [demo version](http://apisix.iresty.com), make it
 Using AWS's 8 core server, APISIX's QPS reach to 140,000 with a latency of only 0.2 ms.
 
 ## Document
-[Documents of Apache APISIX](doc/README.md)
+[Document Indexing for Apache APISIX](doc/README.md)
 
 ## Apache APISIX vs Kong
 
-#### both of them have been covered core features of API gateway
+#### Both of them have been covered core features of API gateway
 
-| **feature**   | **Dynamic upstream**   | **Health check**   | **Dynamic SSL**   | **L4 and L7 proxy**   | **opentracing**   | **custom plugin**   | **REST API**   | **CLI**   |
-|:----|:----|:----|:----|:----|:----|:----|:----|:----|
-| **Apache APISIX**   | Yes   | Yes   | Yes   | Yes   | Yes   | Yes   | Yes   | Yes   |
-| **Kong**   | Yes   | Yes   | Yes   | Yes   | Yes   | Yes   | Yes   | Yes   |
+| **Features**   | **Apache APISIX**   | **KONG**   |
+|:----|:----|:----|
+| **Dynamic upstream**  | Yes   | Yes   |
+| **Dynamic router**  | Yes   | Yes   |
+| **Health check**  | Yes   | Yes   |
+| **Dynamic SSL**  | Yes   | Yes   |
+| **L4 and L7 proxy**  | Yes   | Yes   |
+| **Opentracing**  | Yes   | Yes   |
+| **Custom plugin**  | Yes   | Yes   |
+| **REST API**  | Yes   | Yes   |
+| **CLI**  | Yes   | Yes   |
 
 #### The advantages of Apache APISIX
 | **Features**   | **Apache APISIX**   | **Kong**   |
 |:----|:----|:----|
-| belongs to   | Apache Foundation   | Kong Inc.   |
+| belongs to   | Apache Software Foundation   | Kong Inc.   |
 | Tech Architecture | Nginx + etcd   | Nginx + postgres   |
-| Communication channels  | Mail list, Wechat qroup, QQ group, Github, meetup   | Github,freenode, forum   |
+| Communication channels  | Mail list, Wechat group, QQ group, Github, meetup   | Github, freenode, forum |
 | Single-core CPU, QPS(enable limit-count and prometheus plugins)   | 18000   | 1700   |
 |  latency | 0.2 ms   | 2 ms   |
-| IPv6    | Yes   | No   |
-| ARM64   | Yes   | No   |
 | Dubbo   | Yes   | No   |
 | Configuration rollback   | Yes   | No   |
 | route with TTL   | Yes   | No   |
@@ -193,11 +199,12 @@ Using AWS's 8 core server, APISIX's QPS reach to 140,000 with a latency of only 
 | resty <--> gRPC transcoding   | Yes   | No   |
 | Tengine   | Yes   | No   |
 | MQTT    | Yes   | No   |
-| Configuration effective time   | Event driven, < 1ms   | polling, 10 seconds   |
+| Configuration effective time   | Event driven, < 1ms   | polling, 5 seconds   |
 | dashboard   | Yes   | No   |
 | IdP   | Yes   | No   |
 | Configuration Center HA   | Yes   | No   |
 | Speed limit for a specified time window   | Yes   | No   |
+| Support any Nginx variable as routing condition  | Yes   | No   |
 
 ## Videos And Articles
 - 2019.12.14 [From 0 to 1: APISIX's Apache travel(Chinese)](https://zhuanlan.zhihu.com/p/99620158)
