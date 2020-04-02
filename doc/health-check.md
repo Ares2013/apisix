@@ -26,7 +26,7 @@ you can use it for upstream.
 The following is a example of health check:
 
 ```shell
-curl http://127.0.0.1:9080/apisix/admin/routes/1 -X PUT -d '
+curl http://127.0.0.1:9080/apisix/admin/routes/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -d '
 {
     "uri": "/index.html",
     "plugins": {
@@ -41,7 +41,7 @@ curl http://127.0.0.1:9080/apisix/admin/routes/1 -X PUT -d '
          "nodes": {
             "127.0.0.1:1980": 1,
             "127.0.0.1:1970": 1
-        }
+        },
         "type": "roundrobin",
         "retries": 2,
         "checks": {

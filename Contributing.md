@@ -29,7 +29,7 @@ Most of the contributions that we receive are code contributions, but you can
 also contribute to the documentation or simply report solid bugs
 for us to fix.
 
- For new contributors, please take a look at issues with tag called [Good first issue](https://github.com/apache/incubator-apisix/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/incubator-apisix/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+ For new contributors, please take a look at issues with a tag called [Good first issue](https://github.com/apache/incubator-apisix/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/incubator-apisix/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 
 ## How to report a bug?
 
@@ -46,8 +46,89 @@ Once we've discussed your changes and you've got your code ready, make sure that
 
 * Update the README.md with details of changes to the interface.
 * Includes tests for new functionality.
-* References the original issue in description, e.g. "Resolves #123".
+* References the original issue in the description, e.g. "Resolves #123".
 * Has a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+
+## Contribution Guidelines for Documentation
+
+* Linting/Style
+
+    Use a markdown linting tool to lint the content. The following is a [plugin](https://github.com/apache/incubator-apisix/issues/1273)
+    used by our community to lint the docs.
+
+* Active Voice
+
+    In general, use active voice when formulating the sentence instead of passive voice. A sentence written in the active voice will emphasize
+    the person or thing who is performing an action (eg.The dog chased the ball).  In contrast, the passive voice will highlight
+    the recipient of the action (The ball was chased by the dog). Therefore use the passive voice, only when it's less important
+    who or what completed the action and more important that the action was completed. For example:
+
+    - Recommended: The key-auth plugin authenticates the requests.
+    - Not recommended: The requests are authenticated by the key-auth plugin.
+
+* Capitalization:
+
+    * For titles of a section, capitalize the first letter of each word except for the [closed-class words](http://babelnet.sbg.ac.at/themepark/grammar/classes.htm)
+      such as determiners, pronouns, conjunctions, and prepositions. Use the following [link](https://capitalizemytitle.com/#Chicago) for guidance.
+      - Recommended: Authentication **with** APISIX
+
+    * For normal sentences, don't [capitalize](https://www.grammarly.com/blog/capitalization-rules/) random words in the middle of the sentences.
+      Use the Chicago manual for capitalization rules for the documentation.
+
+* Second Person
+
+    In general, use second person in your docs rather than first person. For example:
+
+    - Recommended: You are recommended to use the docker based deployment.
+    - Not Recommended: We recommend to use the docker based deployment.
+
+* Spellings
+
+    Use [American spellings](https://www.oxfordinternationalenglish.com/differences-in-british-and-american-spelling/) when
+    contributing to the documentation.
+
+* Voice
+
+    * Use a friendly and conversational tone. Always use simple sentences. If the sentence is lengthy try to break it in to smaller sentences.
+
+## Check code style and test case style
+
+* code style
+    * Please take a look at [OpenResty Lua Coding Style Guide](CODE_STYLE.md).
+    * Use tool to check your code statically by command: `make lint`.
+```shell
+        # install `luacheck` first before run it
+        $ luarocks install luacheck
+        # check source code
+        $ make lint
+        luacheck -q lua
+        Total: 0 warnings / 0 errors in 74 files
+        ./utils/lj-releng \
+            apisix/*.lua \
+            apisix/admin/*.lua \
+            apisix/core/*.lua \
+            apisix/http/*.lua \
+            apisix/http/router/*.lua \
+            apisix/plugins/*.lua \
+            apisix/plugins/grpc-transcode/*.lua \
+            apisix/plugins/limit-count/*.lua > \
+            /tmp/check.log 2>&1 || (cat /tmp/check.log && exit 1)
+```
+* test case style
+    * Use tool to check your test case style statically by command, eg: `reindex t/admin/*.t`.
+```shell
+    # install `reindex` first before run it
+    # wget https://raw.githubusercontent.com/iresty/openresty-devel-utils/master/reindex
+    # ./reindex test cases
+    $ reindex t/admin/*.t
+    reindex: t/plugin/example.t:	skipped.        # No changes needed
+    reindex: t/plugin/fault-injection.t:	done.   # updated
+    reindex: t/plugin/grpc-transcode.t:	skipped.
+    ... ...
+    reindex: t/plugin/udp-logger.t:	done.
+    reindex: t/plugin/zipkin.t:	skipped.
+```
+    * By the way, we can download "reindex" to another path and add this path to "PATH" environment.
 
 ## Do you have questions about the source code?
 

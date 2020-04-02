@@ -58,14 +58,15 @@ A/B 测试、金丝雀发布(灰度发布)、蓝绿部署、限流限速、抵�
     - [gRPC 代理](doc/grpc-proxy-cn.md)：通过 APISIX 代理 gRPC 连接，并使用 APISIX 的大部分特性管理你的 gRPC 服务。
     - [gRPC 协议转换](doc/plugins/grpc-transcoding-cn.md)：支持协议的转换，这样客户端可以通过 HTTP/JSON 来访问你的 gRPC API。
     - Websocket 代理
+    - Proxy Protocol
     - Dubbo 代理：基于 Tengine，可以实现 Dubbo 请求的代理。
     - HTTP(S) 反向代理
     - [SSL](doc/https-cn.md)：动态加载 SSL 证书。
 
 - **全动态能力**
     - [热更新和热插件](doc/plugins-cn.md): 无需重启服务，就可以持续更新配置和插件。
-    - [代理请求重写](doc/plugins/proxy-rewrite.md): 支持重写请求上游的`host`、`uri`、`schema`、`enable_websocket`、`headers`信息。
-    - [输出内容重写](doc/plugins/response-rewrite.md): 支持自定义修改返回内容的 `status code`、`body`、`headers`。
+    - [代理请求重写](doc/plugins/proxy-rewrite-cn.md): 支持重写请求上游的`host`、`uri`、`schema`、`enable_websocket`、`headers`信息。
+    - [输出内容重写](doc/plugins/response-rewrite-cn.md): 支持自定义修改返回内容的 `status code`、`body`、`headers`。
     - [Serverless](doc/plugins/serverless-cn.md): 在 APISIX 的每一个阶段，你都可以添加并调用自己编写的函数。
     - 动态负载均衡：动态支持有权重的 round-robin 负载平衡。
     - 支持一致性 hash 的负载均衡：动态支持一致性 hash 的负载均衡。
@@ -82,26 +83,29 @@ A/B 测试、金丝雀发布(灰度发布)、蓝绿部署、限流限速、抵�
     - [支持路由的优先级](doc/router-radixtree.md#3-match-priority)
 
 - **安全防护**
-    - 多种身份认证方式: [key-auth](doc/plugins/key-auth-cn.md), [JWT](doc/plugins/jwt-auth-cn.md), [basic-auth](doc/plugins/basic-auth-cn.md)。
+    - 多种身份认证方式: [key-auth](doc/plugins/key-auth-cn.md), [JWT](doc/plugins/jwt-auth-cn.md), [basic-auth](doc/plugins/basic-auth-cn.md), [wolf-rbac](doc/plugins/wolf-rbac-cn.md)。
     - [IP 黑白名单](doc/plugins/ip-restriction-cn.md)
     - [IdP 支持](doc/plugins/oauth.md): 支持外部的身份认证服务，比如 Auth0，Okta，Authing 等，用户可以借此来对接 Oauth2.0 等认证方式。
     - [限制速率](doc/plugins/limit-req-cn.md)
     - [限制请求数](doc/plugins/limit-count-cn.md)
     - [限制并发](doc/plugins/limit-conn-cn.md)
     - 防御 ReDoS(正则表达式拒绝服务)：内置策略，无需配置即可抵御 ReDoS。
+    - [CORS](doc/plugins/cors-cn.md)
 
-- **可运维**
+- **运维友好**
     - OpenTracing 可观测性: [支持 Apache Skywalking 和 Zipkin](doc/plugins/zipkin-cn.md)。
     - 监控和指标: [Prometheus](doc/plugins/prometheus-cn.md)
-    - 集群：APISIX 节点是无状态的，创建配置中心集群请参考 [etcd Clustering Guide](https://github.com/etcd-io/etcd/blob/master/Documentation/v2/clustering.md)。
+    - 集群：APISIX 节点是无状态的，创建配置中心集群请参考 [etcd Clustering Guide](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md)。
+    - 高可用：支持配置同一个集群内的多个 etcd 地址。
     - 控制台: 内置控制台来操作 APISIX 集群。
     - 版本控制：支持操作的多次回滚。
     - CLI: 使用命令行来启动、关闭和重启 APISIX。
     - [单机模式](doc/stand-alone-cn.md): 支持从本地配置文件中加载路由规则，在 kubernetes(k8s) 等环境下更友好。
-    - 全局规则：允许对所有请求执行插件，比如黑白名单、限流限速等。
+    - [全局规则](doc/architecture-design-cn.md#Global-Rule)：允许对所有请求执行插件，比如黑白名单、限流限速等。
     - 高性能：在单核上 QPS 可以达到 18k，同时延迟只有 0.2 毫秒。
-    - [REST admin API](doc/admin-api-cn.md)
-    - 故障注入
+    - [故障注入](doc/plugins/fault-injection-cn.md)
+    - [REST Admin API](doc/admin-api-cn.md)
+    - [Python SDK](https://github.com/api7/apache-apisix-python-sdk)
 
 - **高度可扩展**
     - [自定义插件](doc/plugin-develop-cn.md): 允许挂载常见阶段，例如`init`, `rewrite`，`access`，`balancer`,`header filer`，`body filter` 和 `log` 阶段。
@@ -130,9 +134,9 @@ CentOS 7, Ubuntu 16.04, Ubuntu 18.04, Debian 9, Debian 10, macOS, **[ARM64](http
 sudo apisix start
 ```
 
-2. 测试限流插件
+2. 入门指南
 
-你可以测试限流插件，来上手体验 APISIX，按照[限流插件文档](doc/plugins/limit-count-cn.md)的步骤即可。
+入门指南是学习 APISIX 基础知识的好方法。按照 [入门指南](doc/getting-started-cn.md)的步骤即可。
 
 更进一步，你可以跟着文档来尝试更多的[插件](doc/README_CN.md#插件)。
 
@@ -140,18 +144,22 @@ sudo apisix start
 
 APISIX 内置了对 Dashboard 的支持，使用步骤如下：
 
-- 下载 [Dashboard](https://github.com/apache/incubator-apisix-dashboard) 的源码：
+1. 确保你的运行环境中的 Node 版本 >= 8.12.0。
+
+2. 下载 [Dashboard](https://github.com/apache/incubator-apisix-dashboard) 的源码：
 ```
 git clone https://github.com/apache/incubator-apisix-dashboard.git
 ```
-- 安装yarn: 参考[安装文档](https://yarnpkg.com/zh-Hans/docs/install)
-- 安装依赖并构建
+
+3. 安装 [yarn](https://yarnpkg.com/zh-Hans/docs/install)
+
+4. 安装依赖并构建
 ```
-yarn
-yarn run build:prod
+git checkout <v1.0>  #这里的tag版本和你使用的apisix版本一致
+yarn && yarn build:prod
 ```
 
-- 与 APISIX 集成
+5. 与 APISIX 集成
 把编译后的在 `/dist` 目录下的所有文件，拷贝到 `apisix/dashboard` 目录下。
 使用浏览器打开 `http://127.0.0.1:9080/apisix/dashboard/` 即可使用，
 不用填写用户名和密码，直接登录。
@@ -210,6 +218,7 @@ Dashboard 默认允许任何 IP 访问。你可以自行修改 `conf/config.yaml
 
 
 ## 视频和文章
+- 2020.1.17 [API 网关 Apache APISIX 和 Kong 的选型对比](https://mp.weixin.qq.com/s/c51apneVj0O9yxiZAHF34Q)
 - 2019.12.14 [从 0 到 1：Apache APISIX 的 Apache 之路](https://zhuanlan.zhihu.com/p/99620158)
 - 2019.12.14 [基于 Apache APISIX 的下一代微服务架构](https://www.upyun.com/opentalk/445.html)
 - 2019.10.30 [Apache APISIX 微服务架构极致性能架构解析](https://www.upyun.com/opentalk/440.html)

@@ -31,6 +31,7 @@
 |------- |-----|------|
 |status_code   |可选| 修改上游返回状态码|
 |body          |可选| 修改上游返回的 `body` 内容，如果设置了新内容，header 里面的 content-length 字段也会被去掉|
+|body_base64       |可选| 布尔类型，描述 `body` 字段是否需要 base64 解码之后再返回给客户端，用在某些图片和 Protobuffer 场景|
 |headers       |可选| 返回给客户端的 `headers`，这里可以设置多个。头信息如果存在将重写，不存在则添加。想要删除某个 header 的话，把对应的值设置为空字符串即可|
 
 
@@ -40,7 +41,7 @@
 下面是一个示例，在指定的 route 上开启了 `response rewrite` 插件:
 
 ```shell
-curl http://127.0.0.1:9080/apisix/admin/routes/1 -X PUT -d '
+curl http://127.0.0.1:9080/apisix/admin/routes/1  -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -d '
 {
     "methods": ["GET"],
     "uri": "/test/index.html",
