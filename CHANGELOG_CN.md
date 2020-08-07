@@ -19,12 +19,138 @@
 
 # Table of Contents
 
+- [1.5.0](#150)
+- [1.4.1](#141)
+- [1.4.0](#140)
+- [1.3.0](#130)
+- [1.2.0](#120)
 - [1.1.0](#110)
 - [1.0.0](#100)
 - [0.9.0](#090)
 - [0.8.0](#080)
 - [0.7.0](#070)
 - [0.6.0](#060)
+
+
+## 1.5.0
+
+### Core
+- Admin API：支持使用SSL证书进行身份验证。[1747](https://github.com/apache/apisix/pull/1747)
+- Admin API：同时支持标准的PATCH和子路径PATCH。[1930](https://github.com/apache/apisix/pull/1930)
+- HealthCheck：支持自定义检查端口。[1914](https://github.com/apache/apisix/pull/1914)
+- Upstream：支持禁用 `Nginx` 默认重试机制。[1919](https://github.com/apache/apisix/pull/1919)
+- URI：支持以配置方式删除 `URI` 末尾的 `/` 符号。[1766](https://github.com/apache/apisix/pull/1766)
+
+### New Plugin
+- :sunrise: **新增 请求验证器 插件** [1709](https://github.com/apache/apisix/pull/1709)
+
+### Improvements
+- 变更：nginx `worker_shutdown_timeout` 配置默认值由 `3s` 变更为推荐值 `240s`。[1883](https://github.com/apache/apisix/pull/1883)
+- 变更：`healthcheck` 超时时间类型 由 `integer ` 变更为 `number`。[1892](https://github.com/apache/apisix/pull/1892)
+- 变更：`request-validation` 插件输入参数支持 `JsonSchema` 验证。[1920](https://github.com/apache/apisix/pull/1920)
+- 变更：为 Makefile `install` 命令添加注释。[1912](https://github.com/apache/apisix/pull/1912)
+- 变更：更新 config.yaml `etcd.timeout` 默认配置的注释。[1929](https://github.com/apache/apisix/pull/1929)
+- 变更：为 `prometheus` 添加更多度量指标，以更好地了解 `APISIX` 节点的情况。[1888](https://github.com/apache/apisix/pull/1888)
+- 变更：为 `cors` 插件添加更多配置选项。[1963](https://github.com/apache/apisix/pull/1963)
+
+### Bugfix
+- 修复：`healthcheck` 获取 `host` 配置失败。 [1871](https://github.com/apache/apisix/pull/1871)
+- 修复：插件运行时数据保存到 `etcd`。 [1910](https://github.com/apache/apisix/pull/1910)
+- 修复：多次运行 `apisix start` 将启动多个 `Nginx` 进程。[1913](https://github.com/apache/apisix/pull/1913)
+- 修复：从临时文件读取请求正文（如果已缓存）。[1863](https://github.com/apache/apisix/pull/1863)
+- 修复：批处理器名称和错误返回类型。[1927](https://github.com/apache/apisix/pull/1927)
+- 修复：`limit-count` 插件 `redis.ttl` 读取异常。[1928](https://github.com/apache/apisix/pull/1928)
+- 修复：被动健康检查不能提供健康报告。[1918](https://github.com/apache/apisix/pull/1918)
+- 修复：避免插件中直接修改或使用原始配置数据。[1958](https://github.com/apache/apisix/pull/1958)
+- 修复：`invalid-upstream` 测试用例稳定性问题。[1925](https://github.com/apache/apisix/pull/1925)
+
+### Doc
+- 文档：添加 `APISIX Lua` 代码风格指南。[1874](https://github.com/apache/apisix/pull/1874)
+- 文档：修正 `README` 中语法错误。[1894](https://github.com/apache/apisix/pull/1894)
+- 文档：修正 `benchmark` 文档中图片链接错误。[1896](https://github.com/apache/apisix/pull/1896)
+- 文档：修正 `FAQ`、`admin-api`、`architecture-design`、`discovery`、`prometheus`、`proxy-rewrite`、`redirect`、`http-logger` 文档中错别字。[1916](https://github.com/apache/apisix/pull/1916)
+- 文档：更新 `request-validation` 插件示例。[1926](https://github.com/apache/apisix/pull/1926)
+- 文档：修正 `architecture-design` 文档中错别字。[1938](https://github.com/apache/apisix/pull/1938)
+- 文档：添加 `how-to-build` 文档中在 `Linux` 和 `macOS` 系统中单元测试 `Nginx` 的默认引入路径。[1936](https://github.com/apache/apisix/pull/1936)
+- 文档：添加 `request-validation` 插件中文文档。[1932](https://github.com/apache/apisix/pull/1932)
+- 文档：修正 `README` 中 `gRPC transcoding` 文档路径。[1945](https://github.com/apache/apisix/pull/1945)
+- 文档：修正 `README` 中 `uri-blocker` 文档路径。[1950](https://github.com/apache/apisix/pull/1950)
+- 文档：修正 `README` 中 `grpc-transcode` 文档路径。[1946](https://github.com/apache/apisix/pull/1946)
+- 文档: 删除 `k8s` 文档中不必要的配置。[1891](https://github.com/apache/apisix/pull/1891)
+
+
+## 1.4.1
+
+### Bugfix
+- 修复在配置了多个 SSL 证书的情况下，只有一个证书生效的问题。 [1818](https://github.com/apache/incubator-apisix/pull/1818)
+
+## 1.4.0
+
+### Core
+- Admin API: 路由支持唯一 name 字段 [1655](https://github.com/apache/incubator-apisix/pull/1655)
+- 优化 log 缓冲区大小和刷新时间 [1570](https://github.com/apache/incubator-apisix/pull/1570)
+
+### New plugins
+- :sunrise: **Apache Skywalking plugin** [1241](https://github.com/apache/incubator-apisix/pull/1241)
+- :sunrise: **Keycloak Identity Server Plugin** [1701](https://github.com/apache/incubator-apisix/pull/1701)
+- :sunrise: **Echo Plugin** [1632](https://github.com/apache/incubator-apisix/pull/1632)
+- :sunrise: **Consume Restriction Plugin** [1437](https://github.com/apache/incubator-apisix/pull/1437)
+
+### Improvements
+- Batch Request : 对每个请求拷贝头 [1697](https://github.com/apache/incubator-apisix/pull/1697)
+- SSL 私钥加密 [1678](https://github.com/apache/incubator-apisix/pull/1678)
+- 众多插件文档改善
+
+## 1.3.0
+
+1.3 版本主要带来安全更新。
+
+## Security
+- 拒绝无效的 header [#1462](https://github.com/apache/incubator-apisix/pull/1462) 并对 uri 进行安全编码 [#1461](https://github.com/apache/incubator-apisix/pull/1461)
+- 默认只允许本地环回地址 127.0.0.1 访问 admin API 和 dashboard. [#1458](https://github.com/apache/incubator-apisix/pull/1458)
+
+### Plugin
+- :sunrise: **新增 batch request 插件**. [#1388](https://github.com/apache/incubator-apisix/pull/1388)
+- 实现完成 `sys logger` 插件. [#1414](https://github.com/apache/incubator-apisix/pull/1414)
+
+
+## 1.2.0
+1.2 版本在内核以及插件上带来了非常多的更新。
+
+### Core
+- :sunrise: **支持 etcd 集群**. [#1283](https://github.com/apache/incubator-apisix/pull/1283)
+- 默认使用本地 DNS resolver, 这对于 k8s 环境更加友好. [#1387](https://github.com/apache/incubator-apisix/pull/1387)
+- 支持在 `header_filter`、`body_filter` 和 `log` 阶段运行全局插件. [#1364](https://github.com/apache/incubator-apisix/pull/1364)
+- 将目录 `lua/apisix` 修改为 `apisix`(**不向下兼容**). [#1351](https://github.com/apache/incubator-apisix/pull/1351)
+- 增加 dashboard 子模块. [#1360](https://github.com/apache/incubator-apisix/pull/1360)
+- 允许自定义共享字典. [#1367](https://github.com/apache/incubator-apisix/pull/1367)
+
+### Plugin
+- :sunrise: **新增 Apache Kafka 插件**. [#1312](https://github.com/apache/incubator-apisix/pull/1312)
+- :sunrise: **新增 CORS 插件**. [#1327](https://github.com/apache/incubator-apisix/pull/1327)
+- :sunrise: **新增 TCP logger 插件**. [#1221](https://github.com/apache/incubator-apisix/pull/1221)
+- :sunrise: **新增 UDP logger 插件**. [1070](https://github.com/apache/incubator-apisix/pull/1070)
+- :sunrise: **新增 proxy mirror 插件**. [#1288](https://github.com/apache/incubator-apisix/pull/1288)
+- :sunrise: **新增 proxy cache 插件**. [#1153](https://github.com/apache/incubator-apisix/pull/1153)
+- 在 proxy-rewrite 插件中废弃 websocket 开关(**不向下兼容**). [1332](https://github.com/apache/incubator-apisix/pull/1332)
+-  OAuth 插件中增加基于公钥的自省支持. [#1266](https://github.com/apache/incubator-apisix/pull/1266)
+- response-rewrite 插件通过 base64 来支持传输二进制数据. [#1381](https://github.com/apache/incubator-apisix/pull/1381)
+- gRPC 转码插件支持 `deadline`. [#1149](https://github.com/apache/incubator-apisix/pull/1149)
+- limit count 插件支持 redis 权限认证. [#1150](https://github.com/apache/incubator-apisix/pull/1150)
+- Zipkin 插件支持名字和本地服务器 ip 的记录. [#1386](https://github.com/apache/incubator-apisix/pull/1386)
+- Wolf-Rbac 插件增加 `change_pwd` 和 `user_info` 参数. [#1204](https://github.com/apache/incubator-apisix/pull/1204)
+
+### Admin API
+- :sunrise: 对调用 Admin API 增加 key-auth 权限认证(**not backward compatible**). [#1169](https://github.com/apache/incubator-apisix/pull/1169)
+- 隐藏 SSL 私钥的返回值. [#1240](https://github.com/apache/incubator-apisix/pull/1240)
+
+### Bugfix
+- 在复用 table 之前遗漏了对数据的清理 (**会引发内存泄漏**). [#1134](https://github.com/apache/incubator-apisix/pull/1134)
+- 如果 yaml 中路由非法就打印警告信息. [#1141](https://github.com/apache/incubator-apisix/pull/1141)
+- 使用空字符串替代空的 balancer IP. [#1166](https://github.com/apache/incubator-apisix/pull/1166)
+- 修改 node-status 和 heartbeat 插件没有 schema 的问题. [#1249](https://github.com/apache/incubator-apisix/pull/1249)
+- basic-auth 增加 required 字段. [#1251](https://github.com/apache/incubator-apisix/pull/1251)
+- 检查上游合法节点的个数. [#1292](https://github.com/apache/incubator-apisix/pull/1292)
 
 
 ## 1.1.0

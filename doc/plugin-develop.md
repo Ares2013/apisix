@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 -->
-[中文](plugin-develop-cn.md)
+[中文](zh-cn/plugin-develop.md)
 
 # table of contents
+
 - [**check dependencies**](#check-dependencies)
 - [**name and config**](#name-and-config)
 - [**schema and check**](#schema-and-check)
 - [**choose phase to run**](#choose-phase-to-run)
 - [**implement the logic**](#implement-the-logic)
 - [**write test case**](#write-test-case)
-
 
 ## check dependencies
 
@@ -97,6 +97,12 @@ plugins:                          # plugin list
 ```
 
 Note : the order of the plugins is not related to the order of execution.
+
+If your plugin has a new code directory of its own, you will need to modify the `Makefile` to create directory, such as:
+```
+$(INSTALL) -d $(INST_LUADIR)/apisix/plugins/skywalking
+$(INSTALL) apisix/plugins/skywalking/*.lua $(INST_LUADIR)/apisix/plugins/skywalking/
+```
 
 ## schema and check
 
@@ -183,6 +189,7 @@ done
 ```
 
 A test case consists of three parts :
+
 - __Program code__ : configuration content of Nginx location
 - __Input__ : http request information
 - __Output check__ : status, header, body, error log check

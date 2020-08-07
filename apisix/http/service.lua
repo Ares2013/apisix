@@ -14,13 +14,15 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 --
-local core = require("apisix.core")
+local core   = require("apisix.core")
+local ipairs = ipairs
 local services
 local error = error
+local pairs = pairs
 
 
 local _M = {
-    version = 0.1,
+    version = 0.2,
 }
 
 
@@ -38,13 +40,55 @@ function _M.services()
 end
 
 
+local function filter(service)
+    service.has_domain = false
+    if not service.value then
+        return
+    end
+
+    if not service.value.upstream or not service.value.upstream.nodes then
+        return
+    end
+
+    local nodes = service.value.upstream.nodes
+    if core.table.isarray(nodes) then
+        for _, node in ipairs(nodes) do
+            local host = node.host
+            if not core.utils.parse_ipv4(host) and
+                    not core.utils.parse_ipv6(host) then
+                service.has_domain = true
+                break
+            end
+        end
+    else
+        local new_nodes = core.table.new(core.table.nkeys(nodes), 0)
+        for addr, weight in pairs(nodes) do
+            local host, port = core.utils.parse_addr(addr)
+            if not core.utils.parse_ipv4(host) and
+                    not core.utils.parse_ipv6(host) then
+                service.has_domain = true
+            end
+            local node = {
+                host = host,
+                port = port,
+                weight = weight,
+            }
+            core.table.insert(new_nodes, node)
+        end
+        service.value.upstream.nodes = new_nodes
+    end
+
+    core.log.info("filter service: ", core.json.delay_encode(service))
+end
+
+
 function _M.init_worker()
     local err
-    services, err = core.config.new("/services",
-                        {
-                            automatic = true,
-                            item_schema = core.schema.service
-                        })
+    services, err = core.config.new("/services", {
+        automatic = true,
+        item_schema = core.schema.service,
+        filter = filter,
+    })
     if not services then
         error("failed to create etcd instance for fetching upstream: " .. err)
         return

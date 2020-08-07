@@ -34,7 +34,8 @@ local schema = {
             enum = {"remote_addr", "server_addr", "http_x_real_ip",
                     "http_x_forwarded_for"},
         },
-        rejected_code = {type = "integer", minimum = 200, maximum = 600},
+        rejected_code = {type = "integer", minimum = 200, maximum = 600,
+                         default = 503},
         policy = {
             type = "string",
             enum = {"local", "redis"},
@@ -53,7 +54,7 @@ local schema = {
         },
     },
     additionalProperties = false,
-    required = {"count", "time_window", "key", "rejected_code"},
+    required = {"count", "time_window", "key"},
 }
 
 
@@ -125,7 +126,7 @@ function _M.access(conf, ctx)
         end
 
         core.log.error("failed to limit req: ", err)
-        return 500, {error_msg = "failed to limit count: ", err}
+        return 500, {error_msg = "failed to limit count: " .. err}
     end
 
     core.response.set_header("X-RateLimit-Limit", conf.count,
