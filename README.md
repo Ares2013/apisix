@@ -84,13 +84,13 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
 - **Security**
     - Authentications: [key-auth](doc/plugins/key-auth.md), [JWT](doc/plugins/jwt-auth.md), [basic-auth](doc/plugins/basic-auth.md), [wolf-rbac](doc/plugins/wolf-rbac.md)
     - [IP Whitelist/Blacklist](doc/plugins/ip-restriction.md)
-    - [IdP](doc/plugins/oauth.md): Support external authentication services, such as Auth0, okta, etc., users can use this to connect to OAuth 2.0 and other authentication methods.
+    - [IdP](doc/plugins/openid-connect.md): Support external authentication services, such as Auth0, okta, etc., users can use this to connect to OAuth 2.0 and other authentication methods.
     - [Limit-req](doc/plugins/limit-req.md)
     - [Limit-count](doc/plugins/limit-count.md)
     - [Limit-concurrency](doc/plugins/limit-conn.md)
     - Anti-ReDoS(Regular expression Denial of Service): Built-in policies to Anti ReDoS without configuration.
     - [CORS](doc/plugins/cors.md) Enable CORS(Cross-origin resource sharing) for your API.
-    - [uri-blocker](doc/plugins/uri-blocker.md): Block client request by URI.
+    - [URI Blocker](doc/plugins/uri-blocker.md): Block client request by URI.
     - [Request Validator](doc/plugins/request-validation.md)
 
 - **OPS friendly**
@@ -210,7 +210,7 @@ etcd --enable-v2=true &
 For more documents, please refer to [Apache APISIX Document Index](doc/README.md)
 
 ## Dashboard
-APISIX has built-in support for Dashboard,
+APISIX has built-in support for [Dashboard](https://github.com/apache/apisix-dashboard), which could be directly deployed by docker compose.
 
 The dashboard only allows 127.0.0.1 by default, and you can modify `allow_admin` in `conf/config.yaml` by yourself, to list the list of IPs allowed to access.
 
@@ -293,7 +293,7 @@ CNCF API Gateway Landscape.</a>
 
 ## Contributing
 
-See [CONTRIBUTING](Contributing.md) for details on submitting patches and the contribution workflow.
+See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
 
 ## Acknowledgments
 
