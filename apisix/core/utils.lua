@@ -29,7 +29,9 @@ local type     = type
 local C        = ffi.C
 local ffi_string = ffi.string
 local get_string_buf = base.get_string_buf
-
+local exiting = ngx.worker.exiting
+local ngx_sleep    = ngx.sleep
+local max_sleep_interval = 1
 
 ffi.cdef[[
     int ngx_escape_uri(char *dst, const char *src,
@@ -69,7 +71,8 @@ function _M.split_uri(uri)
 end
 
 
-local function dns_parse(resolvers, domain)
+local function dns_parse(domain, resolvers)
+    resolvers = resolvers or _M.resolvers
     local r, err = resolver:new{
         nameservers = table.clone(resolvers),
         retrans = 5,  -- 5 retransmissions on receive timeout
@@ -100,9 +103,14 @@ local function dns_parse(resolvers, domain)
         return nil, "unsupport DNS answer"
     end
 
-    return dns_parse(resolvers, answer.cname)
+    return dns_parse(answer.cname, resolvers)
 end
 _M.dns_parse = dns_parse
+
+
+function _M.set_resolver(resolvers)
+    _M.resolvers = resolvers
+end
 
 
 local function rfind_char(s, ch, idx)
@@ -192,6 +200,22 @@ function _M.validate_header_value(value)
     end
     return true
 end
+
+
+local function sleep(sec)
+    if sec <= max_sleep_interval then
+        return ngx_sleep(sec)
+    end
+    ngx_sleep(max_sleep_interval)
+    if exiting() then
+        return
+    end
+    sec = sec - max_sleep_interval
+    return sleep(sec)
+end
+
+
+_M.sleep = sleep
 
 
 return _M
