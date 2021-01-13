@@ -31,7 +31,7 @@ local function fetch_chash_hash_key(ctx, upstream)
     local chash_key
 
     if hash_on == "consumer" then
-        chash_key = ctx.consumer_id
+        chash_key = ctx.consumer_name
     elseif hash_on == "vars" then
         chash_key = ctx.var[key]
     elseif hash_on == "header" then
@@ -68,8 +68,13 @@ function _M.new(up_nodes, upstream)
     return {
         upstream = upstream,
         get = function (ctx)
-            local chash_key = fetch_chash_hash_key(ctx, upstream)
-            local id = picker:find(chash_key)
+            local id
+            if ctx.balancer_try_count > 1 and ctx.chash_last_server_index then
+                id, ctx.chash_last_server_index = picker:next(ctx.chash_last_server_index)
+            else
+                local chash_key = fetch_chash_hash_key(ctx, upstream)
+                id, ctx.chash_last_server_index = picker:find(chash_key)
+            end
             -- core.log.warn("chash id: ", id, " val: ", servers[id])
             return servers[id]
         end

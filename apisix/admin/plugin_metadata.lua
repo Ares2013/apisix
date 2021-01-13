@@ -61,7 +61,9 @@ local function check_conf(plugin_name, conf)
     end
 
     -- inject interceptors schema to each plugins
-    if schema.properties.interceptors then
+    if schema.properties.interceptors
+      and api_router.interceptors_schema['$comment'] ~= schema.properties.interceptors['$comment']
+    then
         error("'interceptors' can not be used as the name of metadata schema's field")
     end
     schema.properties.interceptors = api_router.interceptors_schema
@@ -101,7 +103,7 @@ function _M.get(key)
         path = path .. "/" .. key
     end
 
-    local res, err = core.etcd.get(path)
+    local res, err = core.etcd.get(path, not key)
     if not res then
         core.log.error("failed to get metadata[", key, "]: ", err)
         return 500, {error_msg = err}

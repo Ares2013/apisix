@@ -15,15 +15,17 @@
 -- limitations under the License.
 --
 local require = require
-local router = require("resty.radixtree")
+local router = require("apisix.utils.router")
 local plugin_mod = require("apisix.plugin")
 local ip_restriction = require("apisix.plugins.ip-restriction")
 local core = require("apisix.core")
 local ipairs = ipairs
+local type = type
 
 
 local _M = {}
 local match_opts = {}
+local has_route_not_under_apisix
 local interceptors = {
     ["ip-restriction"] = {
         run = function (conf, ctx)
@@ -35,6 +37,7 @@ local interceptors = {
 
 
 _M.interceptors_schema = {
+    ["$comment"] = "this is the mark for our interceptors schema",
     type = "array",
     items = {
         type = "object",
@@ -75,6 +78,8 @@ do
 function fetch_api_router()
     core.table.clear(routes)
 
+    has_route_not_under_apisix = false
+
     for _, plugin in ipairs(plugin_mod.plugins) do
         local api_fun = plugin.api
         if api_fun then
@@ -83,6 +88,18 @@ function fetch_api_router()
             core.log.debug("fetched api routes: ",
                            core.json.delay_encode(api_routes, true))
             for _, route in ipairs(api_routes) do
+                local typ_uri = type(route.uri)
+                if typ_uri == "string" then
+                    has_route_not_under_apisix =
+                        not core.string.has_prefix(route.uri, "/apisix/")
+                else
+                    for _, uri in ipairs(route.uri) do
+                        if not core.string.has_prefix(route.uri, "/apisix/") then
+                            has_route_not_under_apisix = true
+                        end
+                    end
+                end
+
                 core.table.insert(routes, {
                         methods = route.methods,
                         paths = route.uri,
@@ -90,8 +107,8 @@ function fetch_api_router()
                             local code, body
 
                             local metadata = plugin_mod.plugin_metadata(name)
-                            if metadata and metadata.interceptors then
-                                for _, rule in ipairs(metadata.interceptors) do
+                            if metadata and metadata.value.interceptors then
+                                for _, rule in ipairs(metadata.value.interceptors) do
                                     local f = interceptors[rule.name]
                                     if f == nil then
                                         core.log.error("unknown interceptor: ", rule.name)
@@ -118,6 +135,15 @@ function fetch_api_router()
 end
 
 end -- do
+
+
+function _M.has_route_not_under_apisix()
+    if has_route_not_under_apisix == nil then
+        return true
+    end
+
+    return has_route_not_under_apisix
+end
 
 
 function _M.match(api_ctx)
