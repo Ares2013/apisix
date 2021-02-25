@@ -20,7 +20,7 @@
 
 # Integration service discovery registry
 
-* [**Summary**](#Summary)
+* [**Summary**](#summary)
 * [**How extend the discovery client?**](#how-extend-the-discovery-client)
     * [**Basic steps**](#basic-steps)
     * [**the example of Eureka**](#the-example-of-eureka)
@@ -30,6 +30,7 @@
     * [**Initial service discovery**](#initial-service-discovery)
     * [**Configuration for Eureka**](#configuration-for-eureka)
 * [**Upstream setting**](#upstream-setting)
+* [**Discovery modules**](#discovery-modules)
 
 ## Summary
 
@@ -243,3 +244,8 @@ $ curl http://127.0.0.1:9080/apisix/admin/routes/2 -H 'X-API-KEY: edd1c9f034335f
 Suppose both A-SERVICE and B-SERVICE provide a `/test` API. The above configuration allows access to A-SERVICE's `/test` API through `/a/test` and B-SERVICE's `/test` API through `/b/test`.
 
 **Notice**：When configuring `upstream.service_name`,  `upstream.nodes` will no longer take effect, but will be replaced by 'nodes' obtained from the registry.
+
+## Discovery modules
+
+- eureka
+- [Consul KV](discovery/consul_kv.md)

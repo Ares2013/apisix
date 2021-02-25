@@ -28,8 +28,9 @@
 - [**Upstream**](#upstream)
 - [**Router**](#router)
 - [**Consumer**](#consumer-1)
-- [**Global Rule**](#Global-Rule)
-- [**Debug mode**](#Debug-mode)
+- [**Global Rule**](#global-rule)
+- [**Plugin Config**](#plugin-config)
+- [**Debug mode**](#debug-mode)
 
 ## APISIX
 
@@ -43,9 +44,9 @@
 
 ## APISIX Config
 
-通过修改本地 `conf/config.yaml` 文件完成对 APISIX 服务本身的基本配置。
+通过修改本地 `conf/config.yaml` 文件，或者在启动 APISIX 时使用 `-c` 或 `--config` 添加文件路径参数 `apisix start -c <path string>`，完成对 APISIX 服务本身的基本配置。
 
-比如修改 APISIX 默认监听端口为 8000，其他配置保持默认，在 `conf/config.yaml` 中只需这样配置：
+比如修改 APISIX 默认监听端口为 8000，其他配置保持默认，在 `config.yaml` 中只需这样配置：
 
 ```yaml
 apisix:
@@ -53,7 +54,7 @@ apisix:
 ```
 
 比如指定 APISIX 默认监听端口为 8000，并且设置 etcd 地址为 `http://foo:2379`，
-其他配置保持默认。在 `conf/config.yaml` 中只需这样配置：
+其他配置保持默认。在 `config.yaml` 中只需这样配置：
 
 ```yaml
 apisix:
@@ -64,10 +65,10 @@ etcd:
 ```
 
 其他默认配置，可以在 `conf/config-default.yaml` 文件中看到，该文件是与 APISIX 源码强绑定，
-**永远不要**手工修改 `conf/config-default.yaml` 文件。如果需要自定义任何配置，都应在 `conf/config.yaml` 文件中完成。
+**永远不要**手工修改 `conf/config-default.yaml` 文件。如果需要自定义任何配置，都应在 `config.yaml` 文件中完成。
 
 *注意* 不要手工修改 APISIX 自身的 `conf/nginx.conf` 文件，当服务每次启动时，`apisix`
-会根据 `conf/config.yaml` 配置自动生成新的 `conf/nginx.conf` 并自动启动服务。
+会根据 `config.yaml` 配置自动生成新的 `conf/nginx.conf` 并自动启动服务。
 
 [返回目录](#目录)
 
@@ -249,7 +250,7 @@ local _M = {
 
 理论上，在 `Script` 中可以写任意 lua 代码，也可以直接调用已有插件以重用已有的代码。
 
-`Script` 也有执行阶段概念，支持 `access`、`header_filer`、`body_filter` 和 `log` 阶段。系统会在相应阶段中自动执行 `Script` 脚本中对应阶段的代码。
+`Script` 也有执行阶段概念，支持 `access`、`header_filter`、`body_filter` 和 `log` 阶段。系统会在相应阶段中自动执行 `Script` 脚本中对应阶段的代码。
 
 ```json
 {
@@ -491,10 +492,10 @@ APISIX 区别于其他 API 网关的一大特点是允许用户选择不同 Rout
 
 如上图所示，作为 API 网关，需要知道 API Consumer（消费方）具体是谁，这样就可以对不同 API Consumer 配置不同规则。
 
-|字段|必选|说明|
-|---|----|----|
-|username|是|Consumer 名称。|
-|plugins|否|该 Consumer 对应的插件配置，它的优先级是最高的：Consumer > Route > Service。对于具体插件配置，可以参考 [Plugins](#plugin) 章节。|
+| 字段     | 必选 | 说明                                                                                                                             |
+| -------- | ---- | -------------------------------------------------------------------------------------------------------------------------------- |
+| username | 是   | Consumer 名称。                                                                                                                  |
+| plugins  | 否   | 该 Consumer 对应的插件配置，它的优先级是最高的：Consumer > Route > Service。对于具体插件配置，可以参考 [Plugins](#plugin) 章节。 |
 
 在 APISIX 中，识别 Consumer 的过程如下图：
 
@@ -593,8 +594,8 @@ HTTP/1.1 403
 
 ## Global Rule
 
-[Plugin](#Plugin) 只能绑定在 [Service](#Service) 或者 [Route](#Route) 上，如果我们需要一个能作用于所有请求的 [Plugin](#Plugin) 该怎么办呢？
-这时候我们可以使用 `GlobalRule` 来注册一个全局的 [Plugin](#Plugin):
+[Plugin](#plugin) 只能绑定在 [Service](#service) 或者 [Route](#route) 上，如果我们需要一个能作用于所有请求的 [Plugin](#plugin) 该怎么办呢？
+这时候我们可以使用 `GlobalRule` 来注册一个全局的 [Plugin](#plugin):
 
 ```shell
 curl -X PUT \
@@ -620,6 +621,128 @@ curl -X PUT \
 
 ```shell
 curl https://{apisix_listen_address}/apisix/admin/global_rules -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1'
+```
+
+[返回目录](#目录)
+
+## Plugin Config
+
+如果你想要复用一组通用的插件配置，你可以把它们提取成一个 Plugin config，并绑定到对应的路由上。
+
+举个例子，你可以这么做：
+
+```shell
+# 创建 Plugin config
+$ curl http://127.0.0.1:9080/apisix/admin/plugin_configs/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -i -d '
+{
+    "desc": "吾乃插件配置1",
+    "plugins": {
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503
+        }
+    }
+}'
+
+# 绑定到路由上
+$ curl http://127.0.0.1:9080/apisix/admin/routes/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -i -d '
+{
+    "uris": ["/index.html"],
+    "plugin_config_id": 1,
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "39.97.63.215:80": 1
+        }
+    }
+}'
+```
+
+如果找不到对应的 Plugin config，该路由上的请求会报 503 错误。
+
+如果这个路由已经配置了 `plugins`，那么 Plugin config 里面的插件配置会合并进去。
+相同的插件会覆盖掉 `plugins` 原有的插件。
+
+举个例子：
+
+```
+{
+    "desc": "吾乃插件配置1",
+    "plugins": {
+        "ip-restriction": {
+            "whitelist": [
+                "127.0.0.0/24",
+                "113.74.26.106"
+            ]
+        },
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503
+        }
+    }
+}
+```
+
++
+
+```
+{
+    "uris": ["/index.html"],
+    "plugin_config_id": 1,
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "39.97.63.215:80": 1
+        }
+    }
+    "plugins": {
+        "proxy-rewrite": {
+            "uri": "/test/add",
+            "scheme": "https",
+            "host": "apisix.iresty.com"
+        },
+        "limit-count": {
+            "count": 20,
+            "time_window": 60,
+            "rejected_code": 503,
+            "key": "remote_addr"
+        }
+    }
+}
+```
+
+=
+
+```
+{
+    "uris": ["/index.html"],
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "39.97.63.215:80": 1
+        }
+    }
+    "plugins": {
+        "ip-restriction": {
+            "whitelist": [
+                "127.0.0.0/24",
+                "113.74.26.106"
+            ]
+        },
+        "proxy-rewrite": {
+            "uri": "/test/add",
+            "scheme": "https",
+            "host": "apisix.iresty.com"
+        },
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503
+        }
+    }
+}
 ```
 
 [返回目录](#目录)
@@ -657,13 +780,13 @@ hello world
 根据文件最后修改时间判断文件内容是否有变化，如有变化则重新加载，如没变化则跳过本次检查。
 所以高级调试模式的开启、关闭都是热更新方式完成。
 
-|名字|可选项|说明|默认值|
-|----|-----|---------|---|
-|hook_conf.enable|必选项|是否开启 hook 追踪调试。开启后将打印指定模块方法的请求参数或返回值|false|
-|hook_conf.name|必选项|开启 hook 追踪调试的模块列表名称||
-|hook_conf.log_level|必选项|打印请求参数和返回值的日志级别|warn|
-|hook_conf.is_print_input_args|必选项|是否打印输入参数|true|
-|hook_conf.is_print_return_value|必选项|是否打印返回值|true|
+| 名字                            | 可选项 | 说明                                                               | 默认值 |
+| ------------------------------- | ------ | ------------------------------------------------------------------ | ------ |
+| hook_conf.enable                | 必选项 | 是否开启 hook 追踪调试。开启后将打印指定模块方法的请求参数或返回值 | false  |
+| hook_conf.name                  | 必选项 | 开启 hook 追踪调试的模块列表名称                                   |        |
+| hook_conf.log_level             | 必选项 | 打印请求参数和返回值的日志级别                                     | warn   |
+| hook_conf.is_print_input_args   | 必选项 | 是否打印输入参数                                                   | true   |
+| hook_conf.is_print_return_value | 必选项 | 是否打印返回值                                                     | true   |
 
 请看下面示例：
 

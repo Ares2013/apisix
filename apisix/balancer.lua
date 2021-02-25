@@ -45,7 +45,6 @@ local function fetch_health_nodes(upstream, checker)
     if not checker then
         local new_nodes = core.table.new(0, #nodes)
         for _, node in ipairs(nodes) do
-            -- TODO filter with metadata
             new_nodes[node.host .. ":" .. node.port] = node.weight
         end
         return new_nodes
@@ -55,15 +54,17 @@ local function fetch_health_nodes(upstream, checker)
     local port = upstream.checks and upstream.checks.active and upstream.checks.active.port
     local up_nodes = core.table.new(0, #nodes)
     for _, node in ipairs(nodes) do
-        local ok = checker:get_target_status(node.host, port or node.port, host)
+        local ok, err = checker:get_target_status(node.host, port or node.port, host)
         if ok then
-            -- TODO filter with metadata
             up_nodes[node.host .. ":" .. node.port] = node.weight
+        elseif err then
+            core.log.error("failed to get health check target status, addr: ",
+                node.host, ":", port or node.port, ", host: ", host, ", err: ", err)
         end
     end
 
     if core.table.nkeys(up_nodes) == 0 then
-        core.log.warn("all upstream nodes is unhealth, use default")
+        core.log.warn("all upstream nodes is unhealthy, use default")
         for _, node in ipairs(nodes) do
             up_nodes[node.host .. ":" .. node.port] = node.weight
         end

@@ -24,6 +24,8 @@
 * [Consumer](#consumer)
 * [Upstream](#upstream)
 * [SSL](#ssl)
+* [Global Rule](#global-rule)
+* [Plugin Config](#plugin-config)
 * [Plugin Metadata](#plugin-metadata)
 * [Plugin](#plugin)
 
@@ -32,6 +34,8 @@
 *API*：/apisix/admin/routes/{id}?ttl=0
 
 *Description*：Route matches requests based on preset rules, and loads the appropriate plugin according to the matching result, then forwarding requests to target Upstream.
+
+Note: When the `Admin API` is enabled, it will occupy the API prefixed with `/apisix/admin`. Therefore, in order to avoid conflicts between your design API and `/apisix/admin`, it is recommended to use a different port for the Admin API. You can customize the Admin API port through `port_admin` in `conf/config.yaml`.
 
 > Request Methods：
 
@@ -72,14 +76,14 @@
 |upstream |False |Upstream|Enabled Upstream configuration, see [Upstream](architecture-design.md#upstream) for more||
 |upstream_id|False |Upstream|Enabled upstream id, see [Upstream](architecture-design.md#upstream) for more ||
 |service_id|False |Service|Binded Service configuration, see [Service](architecture-design.md#service) for more ||
-|service_protocol|False|Upstream protocol type|only `grpc` and `http` are supported|`http` is the default value; Must set `grpc` if using `gRPC proxy` or `gRPC transcode`|
+|plugin_config_id|False, can't be used with `script` |Plugin|Binded plugin config object, see [Plugin Config](architecture-design.md#plugin-config) for more ||
 |labels   |False |Match Rules|Key/value pairs to specify attributes|{"version":"v2","build":"16","env":"production"}|
 |enable_websocket|False|Auxiliary| enable `websocket`(boolean), default `false`.||
 |status          |False|Auxiliary| enable this route, default `1`.|`1` to enable, `0` to disable|
 |create_time|False| Auxiliary|epoch timestamp in second, will be created automatically if missing | 1602883670|
 |update_time|False| Auxiliary|epoch timestamp in second, will be created automatically if missing | 1602883670|
 
-For the same type of parameters, such as `host` and `hosts`, `remote_addr` and `remote_addrs` cannot exist at the same time, only one of them can be selected. If enabled at the same time, the API will response an error.
+For the same type of parameters, such as `host` and `hosts`, `remote_addr` and `remote_addrs` cannot exist at the same time, only one of them can be selected. If enabled at the same time, the API will respond with an error.
 
 Config Example:
 
@@ -265,7 +269,7 @@ After successful execution, status nodes will be updated to:
 
 Return response from etcd currently.
 
-[Back to TOC](#Table-of-Contents)
+[Back to TOC](#table-of-contents)
 
 ## Service
 
@@ -414,7 +418,7 @@ After successful execution, upstream nodes will not retain the original data, an
 
 Return response from etcd currently.
 
-[Back to TOC](#Table-of-Contents)
+[Back to TOC](#table-of-contents)
 
 ## Consumer
 
@@ -485,7 +489,7 @@ Since `v2.2`, we can bind multiple authentication plugins to the same consumer.
 
 Return response from etcd currently.
 
-[Back to TOC](#Table-of-Contents)
+[Back to TOC](#table-of-contents)
 
 ## Upstream
 
@@ -514,7 +518,7 @@ In addition to the basic complex equalization algorithm selection, APISIX's Upst
 |type            |required|the balancer algorithm|
 |nodes           |required, can't be used with `service_name` |Hash table, the key of the internal element is the upstream machine address list, the format is `Address + Port`, where the address part can be IP or domain name, such as `192.168.1.100:80`, `foo.com:80`, etc. Value is the weight of the node. In particular, when the weight value is `0`, it has a special meaning, which usually means that the upstream node is invalid and never wants to be selected. The `nodes` can be empty, which means it is a placeholder and will be filled later. Clients use such an upstream will get 502 response. |
 |service_name    |required, can't be used with `nodes` |the name of service used in the service discovery, see [discovery](discovery.md) for more details|
-|discovery_type |required, if `server_name` is used | the type of service discovery, see [discovery](discovery.md) for more details|
+|discovery_type |required, if `service_name` is used | the type of service discovery, see [discovery](discovery.md) for more details|
 |hash_on         |optional|This option is only valid if the `type` is `chash`. Supported types `vars`(Nginx variables), `header`(custom header), `cookie`, `consumer`, the default value is `vars`.|
 |key             |optional|This option is only valid if the `type` is `chash`. Find the corresponding node `id` according to `hash_on` and `key`. When `hash_on` is set as `vars`, `key` is the required parameter, for now, it support nginx built-in variables like `uri, server_name, server_addr, request_uri, remote_port, remote_addr, query_string, host, hostname, arg_***`, `arg_***` is arguments in the request line, [Nginx variables list](http://nginx.org/en/docs/varindex.html). When `hash_on` is set as `header`, `key` is the required parameter, and `header name` is customized. When `hash_on` is set to `cookie`, `key` is the required parameter, and `cookie name` is customized. When `hash_on` is set to `consumer`, `key` does not need to be set. In this case, the `key` adopted by the hash algorithm is the `consumer_name` authenticated. If the specified `hash_on` and `key` can not fetch values, it will be fetch `remote_addr` by default.|
 |checks          |optional|Configure the parameters of the health check. For details, refer to [health-check](health-check.md).|
@@ -522,8 +526,9 @@ In addition to the basic complex equalization algorithm selection, APISIX's Upst
 |timeout|optional| Set the timeout for connection, sending and receiving messages. |
 |name     |optional|Identifies upstream names|
 |desc     |optional|upstream usage scenarios, and more.|
-|pass_host            |optional|`pass` pass the client request host, `node` not pass the client request host, using the upstream node host, `rewrite` rewrite host by the configured `upstream_host`.|
+|pass_host            |optional|`pass` pass the client request host, `node` not pass the client request host, using the upstream node host, `rewrite` rewrite host by the configured `upstream_host`. Default to `pass`.|
 |upstream_host    |optional|This option is only valid if the `pass_host` is `rewrite`.|
+|scheme|optional |The scheme used when talk with the upstream. The value is one of ['http', 'https', 'grpc', 'grpcs'], default to 'http'.|
 |labels|optional |Key/value pairs to specify attributes|{"version":"v2","build":"16","env":"production"}|
 |create_time|optional| epoch timestamp in second, like `1602883670`, will be created automatically if missing|
 |update_time|optional| epoch timestamp in second, like `1602883670`, will be created automatically if missing|
@@ -652,7 +657,7 @@ After the execution is successful, nodes will not retain the original data, and 
 
 Return response from etcd currently.
 
-[Back to TOC](#Table-of-Contents)
+[Back to TOC](#table-of-contents)
 
 ## SSL
 
@@ -695,6 +700,59 @@ Config Example:
 }
 ```
 
+## Global Rule
+
+*API*：/apisix/admin/global_rules/{id}
+
+*Description*: Set plugins which run globally. Those plugins will be run before any Route/Service level plugins.
+
+> Request Methods：
+
+|Method      |Request URI|Request Body|Description        |
+|---------|-------------------------|--|------|
+|GET      |/apisix/admin/global_rules|NULL|Fetch resource list|
+|GET      |/apisix/admin/global_rules/{id}|NULL|Fetch resource|
+|PUT      |/apisix/admin/global_rules/{id}|{...}|Create resource by ID|
+|DELETE   |/apisix/admin/global_rules/{id}|NULL|Remove resource|
+|PATCH    |/apisix/admin/global_rules/{id}|{...}|Standard PATCH. Update some attributes of the existing global rule, and other attributes not involved will remain as they are; if you want to delete an attribute, set the value of the attribute Set to null to delete; especially, when the value of the attribute is an array, the attribute will be updated in full|
+|PATCH    |/apisix/admin/global_rules/{id}/{path}|{...}|SubPath PATCH, specify the attribute of global rule to be updated through {path}, update the value of this attribute in full, and other attributes that are not involved will remain as they are.|
+
+> Request Body Parameters：
+
+|Parameter|Required|Description|Example|
+|---------|---------|-----------|----|
+|plugins     |True |See [Plugin](architecture-design.md#plugin)||
+|create_time|False|epoch timestamp in second, will be created automatically if missing | 1602883670|
+|update_time|False|epoch timestamp in second, will be created automatically if missing | 1602883670|
+
+## Plugin config
+
+*API*：/apisix/admin/plugin_configs/{id}
+
+*Description*: Provide a group of plugins which can be reused across routes.
+
+> Request Methods：
+
+|Method      |Request URI|Request Body|Description        |
+|---------|-------------------------|--|------|
+|GET      |/apisix/admin/plugin_configs|NULL|Fetch resource list|
+|GET      |/apisix/admin/plugin_configs/{id}|NULL|Fetch resource|
+|PUT      |/apisix/admin/plugin_configs/{id}|{...}|Create resource by ID|
+|DELETE   |/apisix/admin/plugin_configs/{id}|NULL|Remove resource|
+|PATCH    |/apisix/admin/plugin_configs/{id}|{...}|Standard PATCH. Update some attributes of the existing plugin config, and other attributes not involved will remain as they are; if you want to delete an attribute, set the value of the attribute Set to null to delete; especially, when the value of the attribute is an array, the attribute will be updated in full|
+|PATCH    |/apisix/admin/plugin_configs/{id}/{path}|{...}|SubPath PATCH, specify the attribute of plugin config to be updated through {path}, update the value of this attribute in full, and other attributes that are not involved will remain as they are.|
+
+> Request Body Parameters：
+
+|Parameter|Required|Description|Example|
+|---------|---------|-----------|----|
+|plugins    |True |See [Plugin](architecture-design.md#plugin)||
+|desc       |False|description, usage scenarios, and more.|customer xxxx|
+|create_time|False|epoch timestamp in second, will be created automatically if missing | 1602883670|
+|update_time|False|epoch timestamp in second, will be created automatically if missing | 1602883670|
+
+[Back to TOC](#table-of-contents)
+
 ## Plugin Metadata
 
 *API*：/apisix/admin/plugin_metadata/{plugin_name}
@@ -726,7 +784,7 @@ Date: Thu, 26 Dec 2019 04:19:34 GMT
 Content-Type: text/plain
 ```
 
-[Back to TOC](#Table-of-Contents)
+[Back to TOC](#table-of-contents)
 
 ## Plugin
 
@@ -765,4 +823,4 @@ $ curl "http://127.0.0.1:9080/apisix/admin/plugins/key-auth" -H 'X-API-KEY:�
 |---------|-------------------------|--|------|
 |GET      |/apisix/admin/plugins?all=true|NULL|Fetch resource|
 
-[Back to TOC](#Table-of-Contents)
+[Back to TOC](#table-of-contents)

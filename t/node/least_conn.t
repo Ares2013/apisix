@@ -38,7 +38,7 @@ _EOC_
 
     my $route = <<_EOC_;
 routes:
-    - 
+    -
     upstream_id: 1
     uris:
         - /mysleep
@@ -77,7 +77,6 @@ proxy request to 127.0.0.1:1980 while connecting to upstream
 
 
 === TEST 2: select least conn
---- ONLY
 --- apisix_yaml
 upstreams:
     -

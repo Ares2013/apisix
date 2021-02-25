@@ -17,18 +17,16 @@
 local require = require
 local core = require("apisix.core")
 local discovery = require("apisix.discovery.init").discovery
+local upstream_util = require("apisix.utils.upstream")
 local error = error
 local tostring = tostring
 local ipairs = ipairs
 local pairs = pairs
+local is_http = ngx.config.subsystem == "http"
 local upstreams
 local healthcheck
 
-
-local lrucache_checker = core.lrucache.new({
-    ttl = 300, count = 256
-})
-
+local http_code_upstream_unavailable = ngx.HTTP_SERVICE_UNAVAILABLE
 
 local _M = {}
 
@@ -56,14 +54,32 @@ end
 _M.set = set_directly
 
 
+local function release_checker(healthcheck_parent)
+    local checker = healthcheck_parent.checker
+    core.log.info("try to release checker: ", tostring(checker))
+    checker:clear()
+    checker:stop()
+end
+
+
+local function get_healthchecker_name(value)
+    return "upstream#" .. value.key
+end
+_M.get_healthchecker_name = get_healthchecker_name
+
+
 local function create_checker(upstream)
     if healthcheck == nil then
         healthcheck = require("resty.healthcheck")
     end
 
     local healthcheck_parent = upstream.parent
+    if healthcheck_parent.checker and healthcheck_parent.checker_upstream == upstream then
+        return healthcheck_parent.checker
+    end
+
     local checker, err = healthcheck.new({
-        name = "upstream#" .. healthcheck_parent.key,
+        name = get_healthchecker_name(healthcheck_parent),
         shm_name = "upstream-healthcheck",
         checks = upstream.checks,
     })
@@ -72,6 +88,13 @@ local function create_checker(upstream)
         core.log.error("fail to create healthcheck instance: ", err)
         return nil
     end
+
+    if healthcheck_parent.checker then
+        core.config_util.cancel_clean_handler(healthcheck_parent,
+                                              healthcheck_parent.checker_idx, true)
+    end
+
+    core.log.info("create new checker: ", tostring(checker))
 
     local host = upstream.checks and upstream.checks.active and upstream.checks.active.host
     local port = upstream.checks and upstream.checks.active and upstream.checks.active.port
@@ -83,29 +106,60 @@ local function create_checker(upstream)
         end
     end
 
-    core.table.insert(healthcheck_parent.clean_handlers, function ()
-        core.log.info("try to release checker: ", tostring(checker))
-        checker:clear()
-        checker:stop()
-    end)
+    healthcheck_parent.checker = checker
+    healthcheck_parent.checker_upstream = upstream
+    healthcheck_parent.checker_idx =
+        core.config_util.add_clean_handler(healthcheck_parent, release_checker)
 
-    core.log.info("create new checker: ", tostring(checker))
     return checker
 end
 
 
-local function fetch_healthchecker(upstream, version)
+local function fetch_healthchecker(upstream)
     if not upstream.checks then
-        return
+        return nil
     end
 
-    if upstream.checker then
-        return
+    return create_checker(upstream)
+end
+
+
+local function set_upstream_scheme(ctx, upstream)
+    -- plugins like proxy-rewrite may already set ctx.upstream_scheme
+    if not ctx.upstream_scheme then
+        -- the old configuration doesn't have scheme field, so fallback to "http"
+        ctx.upstream_scheme = upstream.scheme or "http"
     end
 
-    local checker = lrucache_checker(upstream, version,
-                                     create_checker, upstream)
-    return checker
+    ctx.var["upstream_scheme"] = ctx.upstream_scheme
+end
+
+
+local fill_node_info
+do
+    local scheme_to_node = {
+        http = 80,
+        https = 443,
+        grpc = 80,
+        grpcs = 443,
+    }
+
+    function fill_node_info(up_conf, scheme)
+        local nodes = up_conf.nodes
+        for _, n in ipairs(nodes) do
+            if not n.port then
+                if up_conf.scheme ~= scheme then
+                    return nil, "Can't detect upstream's scheme. " ..
+                                "You should either specify a port in the node " ..
+                                "or specify the upstream.scheme explicitly"
+                end
+
+                n.port = scheme_to_node[scheme]
+            end
+        end
+
+        return true
+    end
 end
 
 
@@ -132,9 +186,26 @@ function _M.set_by_route(route, api_ctx)
 
         local dis = discovery[up_conf.discovery_type]
         if not dis then
-            return 500, "discovery " .. up_conf.discovery_type .. "is uninitialized"
+            return 500, "discovery " .. up_conf.discovery_type .. " is uninitialized"
         end
-        up_conf.nodes = dis.nodes(up_conf.service_name)
+        local new_nodes = dis.nodes(up_conf.service_name)
+        local same = upstream_util.compare_upstream_node(up_conf.nodes, new_nodes)
+        if not same then
+            up_conf.nodes = new_nodes
+            local new_up_conf = core.table.clone(up_conf)
+            core.log.info("discover new upstream from ", up_conf.service_name, ", type ",
+                          up_conf.discovery_type, ": ",
+                          core.json.delay_encode(new_up_conf, true))
+
+            local parent = up_conf.parent
+            if parent.value.upstream then
+                -- the up_conf comes from route or service
+                parent.value.upstream = new_up_conf
+            else
+                parent.value = new_up_conf
+            end
+            up_conf = new_up_conf
+        end
     end
 
     set_directly(api_ctx, up_conf.type .. "#upstream_" .. tostring(up_conf),
@@ -142,11 +213,22 @@ function _M.set_by_route(route, api_ctx)
 
     local nodes_count = up_conf.nodes and #up_conf.nodes or 0
     if nodes_count == 0 then
-        return 502, "no valid upstream node"
+        return http_code_upstream_unavailable, "no valid upstream node"
+    end
+
+    if not is_http then
+        return
+    end
+
+    set_upstream_scheme(api_ctx, up_conf)
+
+    local ok, err = fill_node_info(up_conf, api_ctx.upstream_scheme)
+    if not ok then
+        return 503, err
     end
 
     if nodes_count > 1 then
-        local checker = fetch_healthchecker(up_conf, api_ctx.upstream_version)
+        local checker = fetch_healthchecker(up_conf)
         api_ctx.up_checker = checker
     end
 
@@ -175,7 +257,13 @@ function _M.init_worker()
             item_schema = core.schema.upstream,
             filter = function(upstream)
                 upstream.has_domain = false
-                if not upstream.value or not upstream.value.nodes then
+                if not upstream.value then
+                    return
+                end
+
+                upstream.value.parent = upstream
+
+                if not upstream.value.nodes then
                     return
                 end
 
@@ -207,8 +295,7 @@ function _M.init_worker()
                     upstream.value.nodes = new_nodes
                 end
 
-                upstream.value.parent = upstream
-                core.log.info("filter upstream: ", core.json.delay_encode(upstream))
+                core.log.info("filter upstream: ", core.json.delay_encode(upstream, true))
             end,
         })
     if not upstreams then

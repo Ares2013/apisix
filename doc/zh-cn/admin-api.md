@@ -24,6 +24,8 @@
 * [Consumer](#consumer)
 * [Upstream](#upstream)
 * [SSL](#ssl)
+* [Global Rule](#global-rule)
+* [Plugin Config](#plugin-config)
 * [Plugin Metadata](#plugin-metadata)
 * [Plugin](#plugin)
 
@@ -33,6 +35,8 @@
 
 *说明*：Route 字面意思就是路由，通过定义一些规则来匹配客户端的请求，然后根据匹配结果加载并执行相应的
 插件，并把请求转发给到指定 Upstream。
+
+注意：在启用 `Admin API` 时，它会占用前缀为 `/apisix/admin` 的 API。因此，为了避免您设计 API 与 `/apisix/admin` 冲突，建议为 Admin API 使用其他端口，您可以在 `conf/config.yaml` 中通过 `port_admin` 进行自定义 Admin API 端口。
 
 > 请求方法：
 
@@ -63,7 +67,7 @@
 |upstream |`plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 |Upstream|启用的 Upstream 配置，详见 [Upstream](architecture-design.md#upstream)||
 |upstream_id|`plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 |Upstream|启用的 upstream id，详见 [Upstream](architecture-design.md#upstream)||
 |service_id|`plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 |Service|绑定的 Service 配置，详见 [Service](architecture-design.md#service)||
-|service_protocol|可选|上游协议类型|只可以是 "grpc", "http" 二选一。|默认 "http"，使用gRPC proxy 或gRPC transcode 时，必须用"grpc"|
+|plugin_config_id|可选，无法跟 script 一起配置|Plugin|绑定的 Plugin config 配置，详见 [Plugin config](architecture-design.md#plugin-config)||
 |name     |可选 |辅助   |标识路由名称|route-xxxx|
 |desc     |可选 |辅助   |标识描述、使用场景等。|客户 xxxx|
 |host     |可选 |匹配规则|当前请求域名，比如 `foo.com`；也支持泛域名，比如 `*.foo.com`。|"foo.com"|
@@ -531,8 +535,9 @@ APISIX 的 Upstream 除了基本的复杂均衡算法选择外，还支持对上
 |hash_on         |可选|辅助|`hash_on` 支持的类型有 `vars`（Nginx内置变量），`header`（自定义header），`cookie`，`consumer`，默认值为 `vars`|
 |name     |可选 |辅助|标识上游服务名称、使用场景等。||
 |desc     |可选 |辅助|上游服务描述、使用场景等。||
-|pass_host            |可选|枚举|`pass` 透传客户端请求的 host, `node` 不透传客户端请求的 host, 使用 upstream node 配置的 host, `rewrite` 使用 `upstream_host` 配置的值重写 host 。||
+|pass_host            |可选|枚举|`pass` 透传客户端请求的 host, `node` 不透传客户端请求的 host, 使用 upstream node 配置的 host, `rewrite` 使用 `upstream_host` 配置的值重写 host 。默认为 `pass`。||
 |upstream_host    |可选|辅助|只在 `pass_host` 配置为 `rewrite` 时有效。||
+|scheme|可选 |辅助|跟上游通信时使用的 scheme。需要是 ['http', 'https', 'grpc', 'grpcs'] 其中的一个，默认是 'http'。|
 |labels   |可选 |匹配规则|标识附加属性的键值对|{"version":"v2","build":"16","env":"production"}|
 |create_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
 |update_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
@@ -701,6 +706,63 @@ ssl 对象 json 配置内容：
     "snis": ["t.com"]   # HTTPS 握手时客户端发送的 SNI
 }
 ```
+
+[Back to TOC](#目录)
+
+## Global Rule
+
+*地址*：/apisix/admin/global_rules/{id}
+
+*说明*：设置全局运行的插件。这一类插件在所有路由级别的插件之前优先运行。
+
+> 请求方法：
+
+|名字      |请求 uri|请求 body|说明        |
+|---------|-------------------------|--|------|
+|GET      |/apisix/admin/global_rules|无|获取资源列表|
+|GET      |/apisix/admin/global_rules/{id}|无|获取资源|
+|PUT      |/apisix/admin/global_rules/{id}|{...}|根据 id 创建资源|
+|DELETE   |/apisix/admin/global_rules/{id}|无|删除资源|
+|PATCH    |/apisix/admin/global_rules/{id}|{...}|标准 PATCH ，修改已有 Global Rule 的部分属性，其他不涉及的属性会原样保留；如果你要删除某个属性，将该属性的值设置为null 即可删除；特别地，当需要修改属性的值为数组时，该属性将全量更新|
+|PATCH    |/apisix/admin/global_rules/{id}/{path}|{...}|SubPath PATCH，通过 {path} 指定 Global Rule 要更新的属性，全量更新该属性的数据，其他不涉及的属性会原样保留。|
+
+> body 请求参数：
+
+|名字      |可选项   |类型 |说明        |示例|
+|---------|---------|----|-----------|----|
+|plugins  |必需|Plugin|详见 [Plugin](architecture-design.md#plugin) ||
+|create_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
+|update_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
+
+[Back to TOC](#目录)
+
+## Plugin Config
+
+*地址*：/apisix/admin/plugin_configs/{id}
+
+*说明*：配置一组可以在路由间复用的插件。
+
+> 请求方法：
+
+|名字      |请求 uri|请求 body|说明        |
+|---------|-------------------------|--|------|
+|GET      |/apisix/admin/plugin_configs|无|获取资源列表|
+|GET      |/apisix/admin/plugin_configs/{id}|无|获取资源|
+|PUT      |/apisix/admin/plugin_configs/{id}|{...}|根据 id 创建资源|
+|DELETE   |/apisix/admin/plugin_configs/{id}|无|删除资源|
+|PATCH    |/apisix/admin/plugin_configs/{id}|{...}|标准 PATCH ，修改已有 Plugin Config 的部分属性，其他不涉及的属性会原样保留；如果你要删除某个属性，将该属性的值设置为null 即可删除；特别地，当需要修改属性的值为数组时，该属性将全量更新|
+|PATCH    |/apisix/admin/plugin_configs/{id}/{path}|{...}|SubPath PATCH，通过 {path} 指定 Plugin Config 要更新的属性，全量更新该属性的数据，其他不涉及的属性会原样保留。|
+
+> body 请求参数：
+
+|名字      |可选项   |类型 |说明        |示例|
+|---------|---------|----|-----------|----|
+|plugins  |必需|Plugin|详见 [Plugin](architecture-design.md#plugin) ||
+|desc     |可选|辅助|标识描述、使用场景等|customer xxxx|
+|create_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
+|update_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
+
+[Back to TOC](#目录)
 
 ## Plugin Metadata
 

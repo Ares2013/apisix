@@ -81,7 +81,7 @@ local remote_addr_def = {
 local label_value_def = {
     description = "value of label",
     type = "string",
-    pattern = [[^[a-zA-Z0-9-_.]+$]],
+    pattern = [[^\S+$]],
     maxLength = 64,
     minLength = 1
 }
@@ -119,7 +119,7 @@ local health_checker = {
                 healthy = {
                     type = "object",
                     properties = {
-                        interval = {type = "integer", minimum = 1, default = 0},
+                        interval = {type = "integer", minimum = 1, default = 1},
                         http_statuses = {
                             type = "array",
                             minItems = 1,
@@ -142,7 +142,7 @@ local health_checker = {
                 unhealthy = {
                     type = "object",
                     properties = {
-                        interval = {type = "integer", minimum = 1, default = 0},
+                        interval = {type = "integer", minimum = 1, default = 1},
                         http_statuses = {
                             type = "array",
                             minItems = 1,
@@ -314,9 +314,9 @@ local upstream_schema = {
         timeout = {
             type = "object",
             properties = {
-                connect = {type = "number", minimum = 0},
-                send = {type = "number", minimum = 0},
-                read = {type = "number", minimum = 0},
+                connect = {type = "number", exclusiveMinimum = 0},
+                send = {type = "number", exclusiveMinimum = 0},
+                read = {type = "number", exclusiveMinimum = 0},
             },
             required = {"connect", "send", "read"},
         },
@@ -341,6 +341,10 @@ local upstream_schema = {
             description = "the key of chash for dynamic load balancing",
             type = "string",
         },
+        scheme = {
+            default = "http",
+            enum = {"grpc", "grpcs", "http", "https"}
+        },
         labels = {
             description = "key/value pairs to specify attributes",
             type = "object",
@@ -362,7 +366,11 @@ local upstream_schema = {
         upstream_host = host_def,
         name = rule_name_def,
         desc = {type = "string", maxLength = 256},
-        service_name = rule_name_def,
+        service_name = {
+            type = "string",
+            maxLength = 256,
+            minLength = 1
+        },
         id = id_schema,
         -- deprecate fields, will be removed soon
         enable_websocket = {
@@ -463,6 +471,8 @@ _M.route = {
         script_id = id_schema,
 
         plugins = plugins_schema,
+        plugin_config_id = id_schema,
+
         upstream = upstream_schema,
 
         labels = {
@@ -540,7 +550,8 @@ _M.route = {
     },
     ["not"] = {
         anyOf = {
-            {required = {"script", "plugins"}}
+            {required = {"script", "plugins"}},
+            {required = {"script", "plugin_config_id"}},
         }
     },
     additionalProperties = false,
@@ -739,6 +750,20 @@ _M.plugins = {
         },
         required = {"name"}
     }
+}
+
+
+_M.plugin_config = {
+    type = "object",
+    properties = {
+        id = id_schema,
+        desc = {type = "string", maxLength = 256},
+        plugins = plugins_schema,
+        create_time = timestamp_def,
+        update_time = timestamp_def
+    },
+    required = {"id", "plugins"},
+    additionalProperties = false,
 }
 
 

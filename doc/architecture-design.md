@@ -30,8 +30,9 @@
 - [**Upstream**](#upstream)
 - [**Router**](#router)
 - [**Consumer**](#consumer-1)
-- [**Global Rule**](#Global-Rule)
-- [**Debug mode**](#Debug-mode)
+- [**Global Rule**](#global-rule)
+- [**Plugin Config**](#plugin-config)
+- [**Debug mode**](#debug-mode)
 
 ## APISIX
 
@@ -45,7 +46,9 @@
 
 ## APISIX Config
 
-For example, set the default listening port of APISIX to 8000, and keep other configurations as default. The configuration in `conf/config.yaml` should be like this:
+There are two methods to configure APISIX: directly change `conf/config.yaml`, or add file path argument using `-c` or `--config` flag when start APISIX like `apisix start -c <path string>`
+
+For example, set the default listening port of APISIX to 8000, and keep other configurations as default. The configuration in `config.yaml` should be like this:
 
 ```yaml
 apisix:
@@ -53,7 +56,7 @@ apisix:
 ```
 
 Set the default listening port of APISIX to 8000, set the `etcd` address to `http://foo:2379`,
-and keep other configurations as default. The configuration in `conf/config.yaml` should be like this:
+and keep other configurations as default. The configuration in `config.yaml` should be like this:
 
 ```yaml
 apisix:
@@ -63,7 +66,7 @@ etcd:
   host: "http://foo:2379"       # etcd address
 ```
 
-Other default configurations can be found in the `conf/config-default.yaml` file, which is bound to the APISIX source code. **Never** manually modify the `conf/config-default.yaml` file. If you need to customize any configuration, you should update the `conf/config.yaml` file.
+Other default configurations can be found in the `conf/config-default.yaml` file, which is bound to the APISIX source code. **Never** manually modify the `conf/config-default.yaml` file. If you need to customize any configuration, you should update the `config.yaml` file.
 
 **Note** `APISIX` will generate `conf/nginx.conf` file automatically, so please *DO NOT EDIT* `conf/nginx.conf` file too.
 
@@ -79,7 +82,7 @@ The following image shows an example of some Route rules. When some attribute va
 
 <img src="./images/routes-example.png" width="50%" height="50%">
 
-We configure all the parameters directly in the Route, it's easy to set up, and each Route has a relatively high degree of freedom. But when our Route has more repetitive configurations (such as enabling the same plugin configuration or upstream information), once we need update these same properties, we have to traverse all the Routes and modify them, so it adding a lot of complexity of management and maintenance.
+We configure all the parameters directly in the Route, it's easy to set up, and each Route has a relatively high degree of freedom. But when our Route has more repetitive configurations (such as enabling the same plugin configuration or upstream information), once we need update these same properties, we have to traverse all the Routes and modify them, so it's adding a lot of complexity of management and maintenance.
 
 The shortcomings mentioned above are independently abstracted in APISIX by the two concepts [Service](#service) and [Upstream](#upstream).
 
@@ -241,7 +244,7 @@ The `Script` configuration can be directly bound to the `Route`.
 
 In theory, you can write arbitrary Lua code in `Script`, or you can directly call existing plugins to reuse existing code.
 
-`Script` also has the concept of execution phase, supporting `access`, `header_filer`, `body_filter` and `log` phase. The system will automatically execute the code of the corresponding phase in the `Script` script in the corresponding phase.
+`Script` also has the concept of execution phase, supporting `access`, `header_filter`, `body_filter` and `log` phase. The system will automatically execute the code of the corresponding phase in the `Script` script in the corresponding phase.
 
 ```json
 {
@@ -479,10 +482,10 @@ For the API gateway, it is usually possible to identify a certain type of reques
 
 As shown in the image above, as an API gateway, you should know who the API Consumer is, so you can configure different rules for different API Consumers.
 
-|Field|Required|Description|
-|---|----|----|
-|username|Yes|Consumer Name.|
-|plugins|No|The corresponding plugin configuration of the Consumer, which has the highest priority: Consumer > Route > Service. For specific plugin configurations, refer to the [Plugins](#plugin) section.|
+| Field    | Required | Description                                                                                                                                                                                      |
+| -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| username | Yes      | Consumer Name.                                                                                                                                                                                   |
+| plugins  | No       | The corresponding plugin configuration of the Consumer, which has the highest priority: Consumer > Route > Service. For specific plugin configurations, refer to the [Plugins](#plugin) section. |
 
 In APISIX, the process of identifying a Consumer is as follows:
 
@@ -581,8 +584,8 @@ HTTP/1.1 403
 
 ## Global Rule
 
-[Plugin](#Plugin) just can be binded to [Service](#Service) or [Route](#Route), if we want a [Plugin](#Plugin) work on all requests, how to do it?
-We can register a global [Plugin](#Plugin) with `GlobalRule`:
+[Plugin](#plugin) just can be binded to [Service](#service) or [Route](#route), if we want a [Plugin](#plugin) work on all requests, how to do it?
+We can register a global [Plugin](#plugin) with `GlobalRule`:
 
 ```shell
 curl -X PUT \
@@ -608,6 +611,129 @@ we can list all `GlobalRule` via admin api as below:
 
 ```shell
 curl https://{apisix_listen_address}/apisix/admin/global_rules
+```
+
+[Back to top](#table-of-contents)
+
+## Plugin Config
+
+To reuse common plugin configurations, you can extract them into a plugin config and
+bind it with a route directly.
+
+For instance, you can do something like:
+
+```shell
+# create a plugin config
+$ curl http://127.0.0.1:9080/apisix/admin/plugin_configs/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -i -d '
+{
+    "desc": "blah",
+    "plugins": {
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503
+        }
+    }
+}'
+
+# bind it to route
+$ curl http://127.0.0.1:9080/apisix/admin/routes/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -i -d '
+{
+    "uris": ["/index.html"],
+    "plugin_config_id": 1,
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "39.97.63.215:80": 1
+        }
+    }
+}'
+```
+
+When we can't find the corresponding plugin config with the id, the requests hit the route will be terminated with HTTP status code 503.
+
+When a route already have `plugins` field configured, the `plugins` in the plugin config
+will be merged into it. The same plugin in the plugin config will override one in the `plugins`.
+
+For example,
+
+```
+{
+    "desc": "I am plugin_config 1",
+    "plugins": {
+        "ip-restriction": {
+            "whitelist": [
+                "127.0.0.0/24",
+                "113.74.26.106"
+            ]
+        },
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503
+        }
+    }
+}
+```
+
++
+
+```
+{
+    "uris": ["/index.html"],
+    "plugin_config_id": 1,
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "39.97.63.215:80": 1
+        }
+    }
+    "plugins": {
+        "proxy-rewrite": {
+            "uri": "/test/add",
+            "scheme": "https",
+            "host": "apisix.iresty.com"
+        },
+        "limit-count": {
+            "count": 20,
+            "time_window": 60,
+            "rejected_code": 503,
+            "key": "remote_addr"
+        }
+    }
+}
+```
+
+=
+
+```
+{
+    "uris": ["/index.html"],
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "39.97.63.215:80": 1
+        }
+    }
+    "plugins": {
+        "ip-restriction": {
+            "whitelist": [
+                "127.0.0.0/24",
+                "113.74.26.106"
+            ]
+        },
+        "proxy-rewrite": {
+            "uri": "/test/add",
+            "scheme": "https",
+            "host": "apisix.iresty.com"
+        },
+        "limit-count": {
+            "count": 2,
+            "time_window": 60,
+            "rejected_code": 503
+        }
+    }
+}
 ```
 
 [Back to top](#table-of-contents)
@@ -643,13 +769,13 @@ Enable advanced debug mode by modifying the configuration in `conf/debug.yaml` f
 
 The checker would judge whether the file data changed according to the last modification time of the file. If there has any change, reload it. If there was no change, skip this check. So it's hot reload for enabling or disabling advanced debug mode.
 
-|Key|Optional|Description|Default|
-|----|-----|---------|---|
-|hook_conf.enable|required|Enable/Disable hook debug trace. Target module function's input arguments or returned value would be printed once this option is enabled.|false|
-|hook_conf.name|required|The module list name of hook which has enabled debug trace||
-|hook_conf.log_level|required|Logging levels for input arguments & returned value|warn|
-|hook_conf.is_print_input_args|required|Enable/Disable input arguments print|true|
-|hook_conf.is_print_return_value|required|Enable/Disable returned value print|true|
+| Key                             | Optional | Description                                                                                                                               | Default |
+| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| hook_conf.enable                | required | Enable/Disable hook debug trace. Target module function's input arguments or returned value would be printed once this option is enabled. | false   |
+| hook_conf.name                  | required | The module list name of hook which has enabled debug trace.                                                                               |         |
+| hook_conf.log_level             | required | Logging levels for input arguments & returned value.                                                                                      | warn    |
+| hook_conf.is_print_input_args   | required | Enable/Disable input arguments print.                                                                                                     | true    |
+| hook_conf.is_print_return_value | required | Enable/Disable returned value print.                                                                                                      | true    |
 
 Example:
 
