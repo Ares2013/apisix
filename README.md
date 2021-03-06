@@ -40,7 +40,7 @@ The technical architecture of Apache APISIX:
 
 - Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe the mailing list.
 - QQ Group - 578997126
-- [Slack Workspace](https://join.slack.com/t/the-asf/shared_invite/zt-lcbw4olf-_5s17RLU0Cx8xTvj2bNbjg) - join `#apisix` on our Slack to meet the team and ask questions
+- [Slack Workspace](https://join.slack.com/t/the-asf/shared_invite/zt-mrougyeu-2aG7BnFaV0VnAT9_JIUVaA) - join `#apisix` on our Slack to meet the team and ask questions
 - ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 - [bilibili video](https://space.bilibili.com/551921247)
 - **Good first issues**:
@@ -153,9 +153,9 @@ There are several ways to install the Apache Release version of APISIX:
    - Download the latest source code release package:
 
      ```shell
-     $ mkdir apisix-2.3
-     $ wget https://downloads.apache.org/apisix/2.3/apache-apisix-2.3-src.tgz
-     $ tar zxvf apache-apisix-2.3-src.tgz -C apisix-2.3
+     $ mkdir apisix-2.4
+     $ wget https://downloads.apache.org/apisix/2.4/apache-apisix-2.4-src.tgz
+     $ tar zxvf apache-apisix-2.4-src.tgz -C apisix-2.4
      ```
 
    - Install the dependencies：
@@ -192,7 +192,7 @@ There are several ways to install the Apache Release version of APISIX:
    - install APISIX：
 
    ```shell
-   $ sudo yum install -y https://github.com/apache/apisix/releases/download/2.3/apisix-2.3-0.x86_64.rpm
+   $ sudo yum install -y https://github.com/apache/apisix/releases/download/2.4/apisix-2.4-0.x86_64.rpm
    ```
 
    - check version of APISIX:
@@ -334,7 +334,7 @@ CNCF API Gateway Landscape.</a>
 
 ## Logos
 
-- [Apache APISIX logo(PNG)](logos/apache-apisix.png)
+- [Apache APISIX logo(PNG)](https://github.com/apache/apisix/tree/master/logos/apache-apisix.png)
 - [Apache APISIX logo source](https://apache.org/logos/#apisix)
 
 ## Acknowledgments
@@ -343,4 +343,4 @@ Inspired by Kong and Orange.
 
 ## License
 
-[Apache 2.0 License](LICENSE)
+[Apache 2.0 License](https://github.com/apache/apisix/tree/master/LICENSE)
