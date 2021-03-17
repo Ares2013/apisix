@@ -41,7 +41,7 @@ APISIX is the highest performance API gateway with a single-core QPS of 23,000, 
 
 ## Does APISIX have a console interface?
 
-Yes, in version 0.6 we have dashboard built in, you can operate APISIX through the web interface.
+Yes, APISIX has a powerful Dashboard. APISIX and [APISIX Dashboard](https://github.com/apache/apisix-dashboard) are independent projects, you can deploy [APISIX Dashboard](https://github.com/apache/apisix-dashboard) to operate APISIX through the web interface.
 
 ## Can I write my own plugin?
 
@@ -357,3 +357,50 @@ The high availability of APISIX can be divided into two parts:
 1. The data plane of Apache APISIX is stateless and can be elastically scaled at will. Just add a layer of LB in front.
 
 2. The control plane of Apache APISIX relies on the highly available implementation of `etcd cluster` and does not require any relational database dependency.
+
+## Why does the `make deps` command fail in source installation?
+
+When executing the `make deps` command, an error such as the one shown below occurs. This is caused by the missing openresty's `openssl` development kit, you need to install it first. Please refer to the [install-dependencies.md](install-dependencies.md) document for installation.
+
+```shell
+$ make deps
+......
+Error: Failed installing dependency: https://luarocks.org/luasec-0.9-1.src.rock - Could not find header file for OPENSSL
+  No file openssl/ssl.h in /usr/local/include
+You may have to install OPENSSL in your system and/or pass OPENSSL_DIR or OPENSSL_INCDIR to the luarocks command.
+Example: luarocks install luasec OPENSSL_DIR=/usr/local
+make: *** [deps] Error 1
+```
+
+## How to access APISIX Dashboard through APISIX proxy
+
+1. Keep the APISIX proxy port and Admin API port different(or disable Admin API). For example, do the following configuration in `conf/config.yaml`.
+
+The Admin API use a separate port 9180:
+
+```yaml
+apisix:
+  port_admin: 9180            # use a separate port
+```
+
+2. Add proxy route of APISIX Dashboard:
+
+Note: The APISIX Dashboard service here is listening on `127.0.0.1:9000`.
+
+```shell
+curl -i http://127.0.0.1:9180/apisix/admin/routes/1  -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -d '
+{
+    "uris":[ "/*" ],
+    "name":"apisix_proxy_dashboard",
+    "upstream":{
+        "nodes":[
+            {
+                "host":"127.0.0.1",
+                "port":9000,
+                "weight":1
+            }
+        ],
+        "type":"roundrobin"
+    }
+}'
+```

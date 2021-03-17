@@ -65,14 +65,14 @@ title: Admin API
 
 | 名字             | 可选项                                                                  | 类型     | 说明                                                                                                                                                                                                                                                                                                                                                       | 示例                                                 |
 | ---------------- | ----------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| uri              | 与 `uris` 二选一                                                        | 匹配规则 | 除了如 `/foo/bar`、`/foo/gloo` 这种全量匹配外，使用不同 [Router](architecture-design.md#router) 还允许更高级匹配，更多见 [Router](architecture-design.md#router)。                                                                                                                                                                                         | "/hello"                                             |
+| uri              | 与 `uris` 二选一                                                        | 匹配规则 | 除了如 `/foo/bar`、`/foo/gloo` 这种全量匹配外，使用不同 [Router](architecture-design/router.md) 还允许更高级匹配，更多见 [Router](architecture-design/router.md)。                                                                                                                                                                                         | "/hello"                                             |
 | uris             | 与 `uri` 二选一                                                         | 匹配规则 | 非空数组形式，可以匹配多个 `uri`                                                                                                                                                                                                                                                                                                                           | ["/hello", "/world"]                                 |
-| plugins          | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Plugin   | 详见 [Plugin](architecture-design.md#plugin)                                                                                                                                                                                                                                                                                                               |                                                      |
-| script           | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Script   | 详见 [Script](architecture-design.md#script)                                                                                                                                                                                                                                                                                                               |                                                      |
-| upstream         | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Upstream | 启用的 Upstream 配置，详见 [Upstream](architecture-design.md#upstream)                                                                                                                                                                                                                                                                                     |                                                      |
-| upstream_id      | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Upstream | 启用的 upstream id，详见 [Upstream](architecture-design.md#upstream)                                                                                                                                                                                                                                                                                       |                                                      |
-| service_id       | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Service  | 绑定的 Service 配置，详见 [Service](architecture-design.md#service)                                                                                                                                                                                                                                                                                        |                                                      |
-| plugin_config_id | 可选，无法跟 script 一起配置                                            | Plugin   | 绑定的 Plugin config 配置，详见 [Plugin config](architecture-design.md#plugin-config)                                                                                                                                                                                                                                                                      |                                                      |
+| plugins          | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Plugin   | 详见 [Plugin](architecture-design/plugin.md)                                                                                                                                                                                                                                                                                                               |                                                      |
+| script           | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Script   | 详见 [Script](architecture-design/script.md)                                                                                                                                                                                                                                                                                                               |                                                      |
+| upstream         | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Upstream | 启用的 Upstream 配置，详见 [Upstream](architecture-design/upstream.md)                                                                                                                                                                                                                                                                                     |                                                      |
+| upstream_id      | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Upstream | 启用的 upstream id，详见 [Upstream](architecture-design/upstream.md)                                                                                                                                                                                                                                                                                       |                                                      |
+| service_id       | `plugins`、`script`、`upstream`/`upstream_id`、`service_id`至少选择一个 | Service  | 绑定的 Service 配置，详见 [Service](architecture-design/service.md)                                                                                                                                                                                                                                                                                        |                                                      |
+| plugin_config_id | 可选，无法跟 script 一起配置                                            | Plugin   | 绑定的 Plugin config 配置，详见 [Plugin config](architecture-design/plugin-config.md)                                                                                                                                                                                                                                                                      |                                                      |
 | name             | 可选                                                                    | 辅助     | 标识路由名称                                                                                                                                                                                                                                                                                                                                               | route-xxxx                                           |
 | desc             | 可选                                                                    | 辅助     | 标识描述、使用场景等。                                                                                                                                                                                                                                                                                                                                     | 客户 xxxx                                            |
 | host             | 可选                                                                    | 匹配规则 | 当前请求域名，比如 `foo.com`；也支持泛域名，比如 `*.foo.com`。                                                                                                                                                                                                                                                                                             | "foo.com"                                            |
@@ -303,9 +303,9 @@ HTTP/1.1 200 OK
 
 | 名字             | 可选项                             | 类型     | 说明                                                                   | 示例                                             |
 | ---------------- | ---------------------------------- | -------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
-| plugins          | 可选                               | Plugin   | 详见 [Plugin](architecture-design.md#plugin)                           |                                                  |
-| upstream         | upstream 或 upstream_id 两个选一个 | Upstream | 启用的 Upstream 配置，详见 [Upstream](architecture-design.md#upstream) |                                                  |
-| upstream_id      | upstream 或 upstream_id 两个选一个 | Upstream | 启用的 upstream id，详见 [Upstream](architecture-design.md#upstream)   |                                                  |
+| plugins          | 可选                               | Plugin   | 详见 [Plugin](architecture-design/plugin.md)                           |                                                  |
+| upstream         | upstream 或 upstream_id 两个选一个 | Upstream | 启用的 Upstream 配置，详见 [Upstream](architecture-design/upstream.md) |                                                  |
+| upstream_id      | upstream 或 upstream_id 两个选一个 | Upstream | 启用的 upstream id，详见 [Upstream](architecture-design/upstream.md)   |                                                  |
 | name             | 可选                               | 辅助     | 标识服务名称。                                                         |                                                  |
 | desc             | 可选                               | 辅助     | 服务描述、使用场景等。                                                 |                                                  |
 | labels           | 可选                               | 匹配规则 | 标识附加属性的键值对                                                   | {"version":"v2","build":"16","env":"production"} |
@@ -528,7 +528,7 @@ Date: Thu, 26 Dec 2019 08:17:49 GMT
 APISIX 的 Upstream 除了基本的复杂均衡算法选择外，还支持对上游做主被动健康检查、重试等逻辑，具体看下面表格。
 
 | 名字           | 可选项                             | 类型           | 说明                                                                                                                                                                                                                                                                                                                                                        | 示例                                             |
-| -------------- | ---------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --- |
+| -------------- | ---------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | type           | 必需                               | 枚举           |                                                                                                                                                                                                                                                                                                                                                             | 负载均衡算法                                     |     |
 | nodes          | 必需，不能和 `service_name` 一起用 | Node           | 哈希表，内部元素的 key 是上游机器地址列表，格式为`地址 + Port`，其中地址部分可以是 IP 也可以是域名，比如 `192.168.1.100:80`、`foo.com:80`等。value 则是节点的权重，特别的，当权重值为 `0` 有特殊含义，通常代表该上游节点失效，永远不希望被选中。`nodes` 可以为空，这通常用作占位符。客户端命中这样的上游会返回 502。                                        | `192.168.1.100:80`                               |
 | service_name   | 必需，不能和 `nodes` 一起用        | string         | 服务发现时使用的服务名，见[集成服务发现注册中心](./discovery.md)                                                                                                                                                                                                                                                                                            | `a-bootiful-client`                              |
@@ -540,8 +540,8 @@ APISIX 的 Upstream 除了基本的复杂均衡算法选择外，还支持对上
 | hash_on        | 可选                               | 辅助           | `hash_on` 支持的类型有 `vars`（Nginx 内置变量），`header`（自定义 header），`cookie`，`consumer`，默认值为 `vars`                                                                                                                                                                                                                                           |
 | name           | 可选                               | 辅助           | 标识上游服务名称、使用场景等。                                                                                                                                                                                                                                                                                                                              |                                                  |
 | desc           | 可选                               | 辅助           | 上游服务描述、使用场景等。                                                                                                                                                                                                                                                                                                                                  |                                                  |
-| pass_host      | 可选                               | 枚举           | `pass` 透传客户端请求的 host, `node` 不透传客户端请求的 host, 使用 upstream node 配置的 host, `rewrite` 使用 `upstream_host` 配置的值重写 host 。默认为 `pass`。                                                                                                                                                                                            |                                                  |
-| upstream_host  | 可选                               | 辅助           | 只在 `pass_host` 配置为 `rewrite` 时有效。                                                                                                                                                                                                                                                                                                                  |                                                  |
+| pass_host      | 可选                               | 枚举           | 请求发给上游时的 host 设置选型。 [`pass`，`node`，`rewrite`] 之一，默认是`pass`。`pass`: 将客户端的 host 透传给上游； `node`: 使用 `upstream`  node 中配置的 host； `rewrite`: 使用配置项 `upstream_host` 的值。                                                                                                                                                                        |                                                  |
+| upstream_host  | 可选                               | 辅助           | 指定上游请求的 host，只在 `pass_host` 配置为 `rewrite` 时有效。                                                                                                                                                                                                                                                                                                                  |                                                  |
 | scheme         | 可选                               | 辅助           | 跟上游通信时使用的 scheme。需要是 ['http', 'https', 'grpc', 'grpcs'] 其中的一个，默认是 'http'。                                                                                                                                                                                                                                                            |
 | labels         | 可选                               | 匹配规则       | 标识附加属性的键值对                                                                                                                                                                                                                                                                                                                                        | {"version":"v2","build":"16","env":"production"} |
 | create_time    | 可选                               | 辅助           | 单位为秒的 epoch 时间戳，如果不指定则自动创建                                                                                                                                                                                                                                                                                                               | 1602883670                                       |
@@ -665,6 +665,41 @@ HTTP/1.1 200 OK
 
 ```
 
+节点可以配置自己的优先级。只有在高优先级的节点不可用或者尝试过，才会访问一个低优先级的节点。
+
+由于默认的优先级是 0，我们可以给一些节点配置负数的优先级来作为备份。
+
+举个例子，
+
+```json
+{
+    "uri": "/hello",
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": [
+            {"host": "127.0.0.1", "port": 1980, "weight": 2000},
+            {"host": "127.0.0.2", "port": 1980, "weight": 1, "priority": -1}
+        ],
+        "checks": {
+            "active": {
+                "http_path": "/status",
+                "healthy": {
+                    "interval": 1,
+                    "successes": 1
+                },
+                "unhealthy": {
+                    "interval": 1,
+                    "http_failures": 1
+                }
+            }
+        }
+    }
+}
+```
+
+节点 `127.0.0.2` 只有在 `127.0.0.1` 不可用或者尝试过之后才会被访问。
+所以它是 `127.0.0.1` 的备份。
+
 > 应答参数
 
 目前是直接返回与 etcd 交互后的结果。
@@ -735,7 +770,7 @@ ssl 对象 json 配置内容：
 
 | 名字        | 可选项 | 类型   | 说明                                          | 示例       |
 | ----------- | ------ | ------ | --------------------------------------------- | ---------- |
-| plugins     | 必需   | Plugin | 详见 [Plugin](architecture-design.md#plugin)  |            |
+| plugins     | 必需   | Plugin | 详见 [Plugin](architecture-design/plugin.md)  |            |
 | create_time | 可选   | 辅助   | 单位为秒的 epoch 时间戳，如果不指定则自动创建 | 1602883670 |
 | update_time | 可选   | 辅助   | 单位为秒的 epoch 时间戳，如果不指定则自动创建 | 1602883670 |
 
@@ -762,7 +797,7 @@ ssl 对象 json 配置内容：
 
 |名字      |可选项   |类型 |说明        |示例|
 |---------|---------|----|-----------|----|
-|plugins  |必需|Plugin|详见 [Plugin](architecture-design.md#plugin) ||
+|plugins  |必需|Plugin|详见 [Plugin](architecture-design/plugin.md) ||
 |desc     |可选|辅助|标识描述、使用场景等|customer xxxx|
 |labels   |可选|辅助|标识附加属性的键值对|{"version":"v2","build":"16","env":"production"}|
 |create_time|可选|辅助|单位为秒的 epoch 时间戳，如果不指定则自动创建|1602883670|
