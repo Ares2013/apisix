@@ -311,3 +311,424 @@ host: localhost
 x-real-ip: 127.0.0.1
 --- no_error_log
 [error]
+
+
+
+=== TEST 10: the upstream.type is `chash` and `key` is header
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PATCH,
+                [=[{
+                    "uri": "/server_port",
+                    "plugins": {
+                        "traffic-split": {
+                            "rules": [
+                                {
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream": {
+                                                "name": "chash_test",
+                                                "type": "chash",
+                                                "hash_on": "header",
+                                                "key": "custom_header",
+                                                "nodes": {
+                                                    "127.0.0.1:1981":1,
+                                                    "127.0.0.1:1982":1
+                                                }
+                                            },
+                                            "weight": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "upstream": {
+                            "type": "roundrobin",
+                            "nodes": {
+                                "127.0.0.1:1980": 1
+                            }
+                    }
+                }]=]
+            )
+            if code >= 300 then
+                ngx.status = code
+            end
+            ngx.say(body)
+        }
+    }
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: hit routes, hash_on custom header
+--- config
+location /t {
+    content_by_lua_block {
+        local t = require("lib.test_admin").test
+        local bodys = {}
+        local headers = {}
+        local headers2 = {}
+        headers["custom_header"] = "hello"
+        headers2["custom_header"] = "world"
+        for i = 1, 8, 2 do
+            local _, _, body = t('/server_port', ngx.HTTP_GET, "", nil, headers2)
+            local _, _, body2 = t('/server_port', ngx.HTTP_GET, "", nil, headers)
+            bodys[i] = body
+            bodys[i+1] = body2
+        end
+
+        ngx.say(table.concat(bodys, ", "))
+    }
+}
+--- response_body eval
+qr/1981, 1982, 1981, 1982, 1981, 1982, 1981, 1982/
+--- grep_error_log eval
+qr/hash_on: header|chash_key: "hello"|chash_key: "world"/
+--- grep_error_log_out
+hash_on: header
+chash_key: "world"
+hash_on: header
+chash_key: "hello"
+hash_on: header
+chash_key: "world"
+hash_on: header
+chash_key: "hello"
+hash_on: header
+chash_key: "world"
+hash_on: header
+chash_key: "hello"
+hash_on: header
+chash_key: "world"
+hash_on: header
+chash_key: "hello"
+
+
+
+=== TEST 12: the plugin has multiple weighted_upstreams(upstream method)
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PATCH,
+                [=[{
+                    "uri": "/server_port",
+                    "plugins": {
+                        "traffic-split": {
+                            "rules": [
+                                {
+                                    "match": [
+                                        {
+                                            "vars": [["arg_id","==","1"]]
+                                        }
+                                    ],
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream": {
+                                                "name": "upstream_A",
+                                                "type": "roundrobin",
+                                                "nodes": {
+                                                    "127.0.0.1:1981":1
+                                                }
+                                            },
+                                            "weight": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "match": [
+                                        {
+                                            "vars": [["arg_id","==","2"]]
+                                        }
+                                    ],
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream": {
+                                                "name": "upstream_B",
+                                                "type": "roundrobin",
+                                                "nodes": {
+                                                    "127.0.0.1:1982":1
+                                                }
+                                            },
+                                            "weight": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "upstream": {
+                            "type": "roundrobin",
+                            "nodes": {
+                                "127.0.0.1:1980": 1
+                            }
+                    }
+                }]=]
+            )
+            if code >= 300 then
+                ngx.status = code
+            end
+            ngx.say(body)
+        }
+    }
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 13: hit each upstream separately
+--- config
+location /t {
+    content_by_lua_block {
+        local t = require("lib.test_admin").test
+        local bodys = {}
+        for i = 1, 9, 3 do
+            local _, _, body = t('/server_port', ngx.HTTP_GET)
+            local _, _, body2 = t('/server_port?id=1', ngx.HTTP_GET)
+            local _, _, body3 = t('/server_port?id=2', ngx.HTTP_GET)
+            bodys[i] = body
+            bodys[i+1] = body2
+            bodys[i+2] = body3
+        end
+
+        ngx.say(table.concat(bodys, ", "))
+    }
+}
+--- response_body eval
+qr/1980, 1981, 1982, 1980, 1981, 1982, 1980, 1981, 1982/
+--- no_error_log
+[error]
+
+
+
+=== TEST 14: the plugin has multiple weighted_upstreams and has a default routing weight in weighted_upstreams
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PATCH,
+                [=[{
+                    "uri": "/server_port",
+                    "plugins": {
+                        "traffic-split": {
+                            "rules": [
+                                {
+                                    "match": [
+                                        {
+                                            "vars": [["arg_id","==","1"]]
+                                        }
+                                    ],
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream": {
+                                                "name": "upstream_A",
+                                                "type": "roundrobin",
+                                                "nodes": {
+                                                    "127.0.0.1:1981":1
+                                                }
+                                            },
+                                            "weight": 1
+                                        },
+                                        {
+                                            "weight": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "match": [
+                                        {
+                                            "vars": [["arg_id","==","2"]]
+                                        }
+                                    ],
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream": {
+                                                "name": "upstream_B",
+                                                "type": "roundrobin",
+                                                "nodes": {
+                                                    "127.0.0.1:1982":1
+                                                }
+                                            },
+                                            "weight": 1
+                                        },
+                                        {
+                                            "weight": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "upstream": {
+                            "type": "roundrobin",
+                            "nodes": {
+                                "127.0.0.1:1980": 1
+                            }
+                    }
+                }]=]
+            )
+            if code >= 300 then
+                ngx.status = code
+            end
+            ngx.say(body)
+        }
+    }
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 15: every weighted_upstreams in the plugin is hit
+--- config
+location /t {
+    content_by_lua_block {
+        local t = require("lib.test_admin").test
+        local bodys = {}
+        for i = 1, 8, 2 do
+            local _, _, body = t('/server_port?id=1', ngx.HTTP_GET)
+            local _, _, body2 = t('/server_port?id=2', ngx.HTTP_GET)
+            bodys[i] = body
+            bodys[i+1] = body2
+        end
+
+        table.sort(bodys)
+        ngx.say(table.concat(bodys, ", "))
+    }
+}
+--- response_body eval
+qr/1980, 1980, 1980, 1980, 1981, 1981, 1982, 1982/
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: set upstream(upstream_id: 1, upstream_id: 2) and add route
+--- config
+    location /t {
+        content_by_lua_block {
+            local t = require("lib.test_admin").test
+            local code, body = t('/apisix/admin/upstreams/1',
+                 ngx.HTTP_PUT,
+                 [[{
+                    "nodes": {
+                        "127.0.0.1:1981": 1
+                    },
+                    "type": "roundrobin",
+                    "desc": "new upstream A"
+                }]]
+                )
+
+            if code >= 300 then
+                ngx.status = code
+                ngx.say(body)
+            end
+
+            code, body = t('/apisix/admin/upstreams/2',
+                 ngx.HTTP_PUT,
+                 [[{
+                    "nodes": {
+                        "127.0.0.1:1982": 1
+                    },
+                    "type": "roundrobin",
+                    "desc": "new upstream B"
+                }]]
+                )
+
+            if code >= 300 then
+                ngx.status = code
+                ngx.say(body)
+            end
+
+            code, body = t('/apisix/admin/routes/1',
+                ngx.HTTP_PATCH,
+                [=[{
+                    "uri": "/server_port",
+                    "plugins": {
+                        "traffic-split": {
+                            "rules": [
+                                {
+                                    "match": [
+                                        {
+                                            "vars": [["arg_id","==","1"]]
+                                        }
+                                    ],
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream_id": 1,
+                                            "weight": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "match": [
+                                        {
+                                            "vars": [["arg_id","==","2"]]
+                                        }
+                                    ],
+                                    "weighted_upstreams": [
+                                        {
+                                            "upstream_id": 2,
+                                            "weight": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "upstream": {
+                            "type": "roundrobin",
+                            "nodes": {
+                                "127.0.0.1:1980": 1
+                            }
+                    }
+                }]=]
+            )
+            if code >= 300 then
+                ngx.status = code
+            end
+            ngx.say(body)
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+--- no_error_log
+[error]
+
+
+
+=== TEST 17: hit each upstream separately
+--- config
+location /t {
+    content_by_lua_block {
+        local t = require("lib.test_admin").test
+        local bodys = {}
+        for i = 1, 9, 3 do
+            local _, _, body = t('/server_port', ngx.HTTP_GET)
+            local _, _, body2 = t('/server_port?id=1', ngx.HTTP_GET)
+            local _, _, body3 = t('/server_port?id=2', ngx.HTTP_GET)
+            bodys[i] = body
+            bodys[i+1] = body2
+            bodys[i+2] = body3
+        end
+
+        ngx.say(table.concat(bodys, ", "))
+    }
+}
+--- response_body eval
+qr/1980, 1981, 1982, 1980, 1981, 1982, 1980, 1981, 1982/
+--- no_error_log
+[error]

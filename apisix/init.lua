@@ -14,33 +14,33 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 --
-local require       = require
+local require         = require
 require("apisix.patch").patch()
-local core          = require("apisix.core")
-local plugin        = require("apisix.plugin")
-local plugin_config = require("apisix.plugin_config")
-local script        = require("apisix.script")
-local service_fetch = require("apisix.http.service").get
-local admin_init    = require("apisix.admin.init")
-local get_var       = require("resty.ngxvar").fetch
-local router        = require("apisix.router")
-local set_upstream  = require("apisix.upstream").set_by_route
-local upstream_util = require("apisix.utils.upstream")
-local ctxdump       = require("resty.ctxdump")
-local ipmatcher     = require("resty.ipmatcher")
-local ngx           = ngx
-local ngx_version   = ngx.config.nginx_version
-local get_method    = ngx.req.get_method
-local ngx_exit      = ngx.exit
-local math          = math
-local error         = error
-local ipairs        = ipairs
-local tostring      = tostring
-local ngx_now       = ngx.now
-local ngx_var       = ngx.var
-local str_byte      = string.byte
-local str_sub       = string.sub
-local tonumber      = tonumber
+local core            = require("apisix.core")
+local plugin          = require("apisix.plugin")
+local plugin_config   = require("apisix.plugin_config")
+local script          = require("apisix.script")
+local service_fetch   = require("apisix.http.service").get
+local admin_init      = require("apisix.admin.init")
+local get_var         = require("resty.ngxvar").fetch
+local router          = require("apisix.router")
+local apisix_upstream = require("apisix.upstream")
+local set_upstream    = apisix_upstream.set_by_route
+local upstream_util   = require("apisix.utils.upstream")
+local ctxdump         = require("resty.ctxdump")
+local ipmatcher       = require("resty.ipmatcher")
+local ngx             = ngx
+local get_method      = ngx.req.get_method
+local ngx_exit        = ngx.exit
+local math            = math
+local error           = error
+local ipairs          = ipairs
+local tostring        = tostring
+local ngx_now         = ngx.now
+local ngx_var         = ngx.var
+local str_byte        = string.byte
+local str_sub         = string.sub
+local tonumber        = tonumber
 local control_api_router
 if ngx.config.subsystem == "http" then
     control_api_router = require("apisix.control.router")
@@ -212,13 +212,16 @@ local function parse_domain_in_up(up)
         return up
     end
 
-    local up_new = core.table.clone(up)
-    up_new.modifiedIndex = up.modifiedIndex .. "#" .. ngx_now()
-    up_new.dns_value = core.table.clone(up.value)
-    up_new.dns_value.nodes = new_nodes
+    if not up.orig_modifiedIndex then
+        up.orig_modifiedIndex = up.modifiedIndex
+    end
+    up.modifiedIndex = up.orig_modifiedIndex .. "#" .. ngx_now()
+
+    up.dns_value = core.table.clone(up.value)
+    up.dns_value.nodes = new_nodes
     core.log.info("resolve upstream which contain domain: ",
-                  core.json.delay_encode(up_new))
-    return up_new
+                  core.json.delay_encode(up, true))
+    return up
 end
 
 
@@ -235,14 +238,14 @@ local function parse_domain_in_route(route)
         return route
     end
 
-    local route_new = core.table.clone(route)
-    route_new.modifiedIndex = route.modifiedIndex .. "#" .. ngx_now()
+    -- don't modify the modifiedIndex to avoid plugin cache miss because of DNS resolve result
+    -- has changed
 
-    route_new.dns_value = core.table.deepcopy(route.value)
-    route_new.dns_value.upstream.nodes = new_nodes
+    route.dns_value = core.table.deepcopy(route.value)
+    route.dns_value.upstream.nodes = new_nodes
     core.log.info("parse route which contain domain: ",
-                  core.json.delay_encode(route))
-    return route_new
+                  core.json.delay_encode(route, true))
+    return route
 end
 
 
@@ -278,6 +281,19 @@ end
 
 function _M.http_access_phase()
     local ngx_ctx = ngx.ctx
+
+    if ngx_ctx.api_ctx and ngx_ctx.api_ctx.ssl_client_verified then
+        local res = ngx_var.ssl_client_verify
+        if res ~= "SUCCESS" then
+            if res == "NONE" then
+                core.log.error("client certificate was not present")
+            else
+                core.log.error("clent certificate verification is not passed: ", res)
+            end
+            return core.response.exit(400)
+        end
+    end
+
     -- always fetch table from the table pool, we don't need a reused api_ctx
     local api_ctx = core.tablepool.fetch("api_ctx", 0, 32)
     ngx_ctx.api_ctx = api_ctx
@@ -429,6 +445,7 @@ function _M.http_access_phase()
                 return core.response.exit(500)
             end
 
+            api_ctx.conf_version = route.modifiedIndex
             api_ctx.matched_route = route
         end
 
@@ -468,10 +485,6 @@ function _M.http_access_phase()
     local up_scheme = api_ctx.upstream_scheme
     if up_scheme == "grpcs" or up_scheme == "grpc" then
         ngx_var.ctx_ref = ctxdump.stash_ngx_ctx()
-        if ngx_version < 1017008 then
-            return ngx.exec("@1_15_" .. up_scheme .. "_pass")
-        end
-
         return ngx.exec("@grpc_pass")
     end
 
@@ -489,6 +502,17 @@ end
 
 function _M.grpc_access_phase()
     ngx.ctx = ctxdump.apply_ngx_ctx(ngx_var.ctx_ref)
+
+    local api_ctx = ngx.ctx.api_ctx
+    if not api_ctx then
+        return
+    end
+
+    local code, err = apisix_upstream.set_grpcs_upstream_param(api_ctx)
+    if code then
+        core.log.error("failed to set grpcs upstream param: ", err)
+        core.response.exit(code)
+    end
 end
 
 
@@ -723,8 +747,8 @@ function _M.stream_init_worker()
     -- for testing only
     core.log.info("random stream test in [1, 10000]: ", math.random(1, 10000))
 
-    router.stream_init_worker()
     plugin.init_worker()
+    router.stream_init_worker()
 
     if core.config == require("apisix.core.config_yaml") then
         core.config.init_worker()

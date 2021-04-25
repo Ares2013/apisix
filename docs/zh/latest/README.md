@@ -117,7 +117,7 @@ A/B 测试、金丝雀发布(灰度发布)、蓝绿部署、限流限速、抵�
 - **运维友好**
 
   - OpenTracing 可观测性: 支持 [Apache Skywalking](plugins/skywalking.md) 和 [Zipkin](plugins/zipkin.md)。
-  - 对接外部服务发现：除了内置的 etcd 外，还支持 `Consul` 和 `Nacos` 的 [DNS 发现模式](https://github.com/apache/apisix/issues/1731#issuecomment-646392129)，以及 [Eureka](discovery.md)。
+  - 对接外部服务发现：除了内置的 etcd 外，还支持 [Consul](../../en/latest/discovery/consul_kv.md) 和 [Nacos](../../en/latest/discovery/nacos.md)，以及 [Eureka](discovery.md)。
   - 监控和指标: [Prometheus](plugins/prometheus.md)
   - 集群：APISIX 节点是无状态的，创建配置中心集群请参考 [etcd Clustering Guide](https://etcd.io/docs/v3.4.0/op-guide/clustering/)。
   - 高可用：支持配置同一个集群内的多个 etcd 地址。
@@ -153,9 +153,9 @@ CentOS 7, Ubuntu 16.04, Ubuntu 18.04, Debian 9, Debian 10, macOS, **ARM64** Ubun
    - 下载最新的源码发布包：
 
      ```shell
-     $ mkdir apisix-2.4
-     $ wget https://downloads.apache.org/apisix/2.4/apache-apisix-2.4-src.tgz
-     $ tar zxvf apache-apisix-2.4-src.tgz -C apisix-2.4
+     $ mkdir apisix-2.5
+     $ wget https://downloads.apache.org/apisix/2.5/apache-apisix-2.5-src.tgz
+     $ tar zxvf apache-apisix-2.5-src.tgz -C apisix-2.5
      ```
 
    - 安装运行时依赖的 Lua 库：
@@ -192,7 +192,7 @@ CentOS 7, Ubuntu 16.04, Ubuntu 18.04, Debian 9, Debian 10, macOS, **ARM64** Ubun
    - 安装 APISIX：
 
    ```shell
-   $ sudo yum install -y https://github.com/apache/apisix/releases/download/2.4/apisix-2.4-0.x86_64.rpm
+   $ sudo yum install -y https://github.com/apache/apisix/releases/download/2.5/apisix-2.5-0.x86_64.rpm
    ```
 
    - 检查 APISIX 的版本号：
@@ -271,27 +271,27 @@ CentOS 7, Ubuntu 16.04, Ubuntu 18.04, Debian 9, Debian 10, macOS, **ARM64** Ubun
 
 #### Apache APISIX 的优势
 
-| **功能**                              | **Apache APISIX**                       | **KONG**               |
+| **功能**                               | **Apache APISIX**                       | **KONG**               |
 | :------------------------------------ | :-------------------------------------- | :--------------------- |
-| 项目归属                              | Apache 软件基金会                       | Kong Inc.              |
-| 技术架构                              | Nginx + etcd                            | Nginx + postgres       |
-| 交流渠道                              | 微信群、QQ 群、邮件列表、GitHub、meetup | GitHub、论坛、freenode |
-| 单核 QPS (开启限流和 prometheus 插件) | 18000                                   | 1700                   |
-| 平均延迟                              | 0.2 毫秒                                | 2 毫秒                 |
-| 支持 Dubbo 代理                       | 是                                      | 否                     |
-| 配置回滚                              | 是                                      | 否                     |
-| 支持生命周期的路由                    | 是                                      | 否                     |
-| 插件热更新                            | 是                                      | 否                     |
-| 用户自定义：负载均衡算法、路由        | 是                                      | 否                     |
+| 项目归属                               | Apache 软件基金会                         | Kong Inc.              |
+| 技术架构                               | Nginx + etcd                            | Nginx + postgres       |
+| 交流渠道                               | 微信群、QQ 群、邮件列表、[GitHub](https://github.com/apache/apisix/issues)、[Slack](https://join.slack.com/t/the-asf/shared_invite/zt-nggtva4i-hDCsW1S35MuZ2g_2DgVDGg)、meetup | GitHub、论坛、freenode |
+| 单核 QPS (开启限流和 prometheus 插件)    | 18000                                   | 1700                   |
+| 平均延迟                               | 0.2 毫秒                                 | 2 毫秒                 |
+| 支持 Dubbo 代理                        | 是                                      | 否                     |
+| 配置回滚                               | 是                                      | 否                     |
+| 支持生命周期的路由                       | 是                                      | 否                     |
+| 插件热更新                             | 是                                      | 否                     |
+| 用户自定义：负载均衡算法、路由             | 是                                      | 否                     |
 | resty <--> gRPC 转码                  | 是                                      | 否                     |
-| 支持 Tengine 作为运行时               | 是                                      | 否                     |
-| MQTT 协议支持                         | 是                                      | 否                     |
-| 配置生效时间                          | 事件通知，低于 1 毫秒更新               | 定期轮询，5 秒         |
-| 自带控制台                            | 是                                      | 否                     |
-| 对接外部身份认证服务                  | 是                                      | 否                     |
-| 配置中心高可用(HA)                    | 是                                      | 否                     |
-| 指定时间窗口的限速                    | 是                                      | 否                     |
-| 支持任何 Nginx 变量做路由条件         | 是                                      | 否                     |
+| 支持 Tengine 作为运行时                 | 是                                      | 否                     |
+| MQTT 协议支持                          | 是                                      | 否                     |
+| 配置生效时间                            | 事件通知，低于 1 毫秒更新                  | 定期轮询，5 秒           |
+| 自带控制台                             | 是                                      | 否                     |
+| 对接外部身份认证服务                     | 是                                      | 否                     |
+| 配置中心高可用(HA)                      | 是                                      | 否                     |
+| 指定时间窗口的限速                      | 是                                      | 否                     |
+| 支持任何 Nginx 变量做路由条件            | 是                                      | 否                     |
 
 性能对比测试[详细内容如下](https://gist.github.com/membphis/137db97a4bf64d3653aa42f3e016bd01)。
 
@@ -339,7 +339,7 @@ APISIX 被纳入 <a href="https://landscape.cncf.io/card-mode?category=api-gatew
 
 ## Logo
 
-- [Apache APISIX logo(PNG)](logos/apache-apisix.png)
+- [Apache APISIX logo(PNG)](../../../logos/apache-apisix.png)
 - [Apache APISIX logo 源文件](https://apache.org/logos/#apisix)
 
 ## 贡献
@@ -354,4 +354,4 @@ APISIX 被纳入 <a href="https://landscape.cncf.io/card-mode?category=api-gatew
 
 ## 协议
 
-[Apache 2.0 License](LICENSE)
+[Apache 2.0 License](../../../LICENSE)

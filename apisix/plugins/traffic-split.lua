@@ -44,9 +44,6 @@ local match_schema = {
             vars = vars_schema
         }
     },
-    -- When there is no `match` rule, the default rule passes.
-    -- Perform upstream logic of plugin configuration.
-    default = {{ vars = {{"server_port", ">", 0}}}}
 }
 
 
@@ -192,6 +189,8 @@ local function set_upstream(upstream_info, ctx)
     local up_conf = {
         name = upstream_info.name,
         type = upstream_info.type,
+        hash_on = upstream_info.hash_on,
+        key = upstream_info.key,
         nodes = new_nodes,
         timeout = {
             send = upstream_info.timeout and upstream_info.timeout.send or 15,
@@ -245,9 +244,15 @@ function _M.access(conf, ctx)
         return
     end
 
-    local weighted_upstreams, match_flag
+    local weighted_upstreams
+    local match_passed = true
+
     for _, rule in ipairs(conf.rules) do
-        match_flag = true
+        if not rule.match then
+            weighted_upstreams = rule.weighted_upstreams
+            break
+        end
+
         for _, single_match in ipairs(rule.match) do
             local expr, err = expr.new(single_match.vars)
             if err then
@@ -255,25 +260,25 @@ function _M.access(conf, ctx)
                 return 500, err
             end
 
-            match_flag = expr:eval(ctx.var)
-            if match_flag then
+            match_passed = expr:eval(ctx.var)
+            if match_passed then
                 break
             end
         end
 
-        if match_flag then
+        if match_passed then
             weighted_upstreams = rule.weighted_upstreams
             break
         end
     end
-    core.log.info("match_flag: ", match_flag)
 
-    if not match_flag then
+    core.log.info("match_passed: ", match_passed)
+
+    if not match_passed then
         return
     end
 
-    local rr_up, err = core.lrucache.plugin_ctx(lrucache, ctx, nil, new_rr_obj,
-                                                weighted_upstreams)
+    local rr_up, err = lrucache(weighted_upstreams, nil, new_rr_obj, weighted_upstreams)
     if not rr_up then
         core.log.error("lrucache roundrobin failed: ", err)
         return 500
