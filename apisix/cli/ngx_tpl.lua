@@ -18,7 +18,9 @@
 return [=[
 # Configuration File - Nginx Server Configs
 # This is a read-only file, do not try to modify it.
-
+{% if user and user ~= '' then %}
+user {* user *};
+{% end %}
 master_process on;
 
 worker_processes {* worker_processes *};
@@ -47,6 +49,7 @@ worker_rlimit_core  {* worker_rlimit_core *};
 worker_shutdown_timeout {* worker_shutdown_timeout *};
 
 env APISIX_PROFILE;
+env PATH; # for searching external plugin runner's binary
 
 {% if envs then %}
 {% for _, name in ipairs(envs) do %}
@@ -84,7 +87,11 @@ stream {
     init_by_lua_block {
         require "resty.core"
         apisix = require("apisix")
-        apisix.stream_init()
+        local dns_resolver = { {% for _, dns_addr in ipairs(dns_resolver or {}) do %} "{*dns_addr*}", {% end %} }
+        local args = {
+            dns_resolver = dns_resolver,
+        }
+        apisix.stream_init(args)
     }
 
     init_worker_by_lua_block {
@@ -92,11 +99,20 @@ stream {
     }
 
     server {
-        {% for _, addr in ipairs(stream_proxy.tcp or {}) do %}
-        listen {*addr*} {% if enable_reuseport then %} reuseport {% end %} {% if proxy_protocol and proxy_protocol.enable_tcp_pp then %} proxy_protocol {% end %};
+        {% for _, item in ipairs(stream_proxy.tcp or {}) do %}
+        listen {*item.addr*} {% if item.tls then %} ssl {% end %} {% if enable_reuseport then %} reuseport {% end %} {% if proxy_protocol and proxy_protocol.enable_tcp_pp then %} proxy_protocol {% end %};
         {% end %}
         {% for _, addr in ipairs(stream_proxy.udp or {}) do %}
         listen {*addr*} udp {% if enable_reuseport then %} reuseport {% end %};
+        {% end %}
+
+        {% if tcp_enable_ssl then %}
+        ssl_certificate      {* ssl.ssl_cert *};
+        ssl_certificate_key  {* ssl.ssl_cert_key *};
+
+        ssl_certificate_by_lua_block {
+            apisix.stream_ssl_phase()
+        }
         {% end %}
 
         {% if proxy_protocol and proxy_protocol.enable_tcp_pp_to_upstream then %}
@@ -200,6 +216,10 @@ http {
     log_format main escape={* http.access_log_format_escape *} '{* http.access_log_format *}';
     uninitialized_variable_warn off;
 
+    {% if use_apisix_openresty then %}
+    apisix_delay_client_max_body_check on;
+    {% end %}
+
     access_log {* http.access_log *} main buffer=16384 flush=3;
     {% end %}
     open_file_cache  max=1000 inactive=60;
@@ -208,17 +228,25 @@ http {
     client_header_timeout {* http.client_header_timeout *};
     client_body_timeout {* http.client_body_timeout *};
     send_timeout {* http.send_timeout *};
+    variables_hash_max_size {* http.variables_hash_max_size *};
 
     server_tokens off;
 
     include mime.types;
-    charset utf-8;
+    charset {* http.charset *};
+
+    # error_page
+    error_page 500 @50x.html;
 
     {% if real_ip_header then %}
     real_ip_header {* real_ip_header *};
     {% print("\nDeprecated: apisix.real_ip_header has been moved to nginx_config.http.real_ip_header. apisix.real_ip_header will be removed in the future version. Please use nginx_config.http.real_ip_header first.\n\n") %}
     {% elseif http.real_ip_header then %}
     real_ip_header {* http.real_ip_header *};
+    {% end %}
+
+    {% if http.real_ip_recursive then %}
+    real_ip_recursive {* http.real_ip_recursive *};
     {% end %}
 
     {% if real_ip_from then %}
@@ -230,6 +258,10 @@ http {
     {% for _, real_ip in ipairs(http.real_ip_from) do %}
     set_real_ip_from {*real_ip*};
     {% end %}
+    {% end %}
+
+    {% if ssl.ssl_trusted_certificate ~= nil then %}
+    lua_ssl_trusted_certificate {* ssl.ssl_trusted_certificate *};
     {% end %}
 
     # http configuration snippet starts
@@ -244,7 +276,9 @@ http {
             apisix.http_balancer_phase()
         }
 
-        keepalive 320;
+        keepalive {* http.upstream.keepalive *};
+        keepalive_requests {* http.upstream.keepalive_requests *};
+        keepalive_timeout {* http.upstream.keepalive_timeout *};
     }
 
     {% if enabled_plugins["dubbo-proxy"] then %}
@@ -274,6 +308,12 @@ http {
         apisix.http_init_worker()
     }
 
+    {% if not use_openresty_1_17 then %}
+    exit_worker_by_lua_block {
+        apisix.http_exit_worker()
+    }
+    {% end %}
+
     {% if enable_control then %}
     server {
         listen {* control_server_addr *};
@@ -284,6 +324,11 @@ http {
             content_by_lua_block {
                 apisix.http_control()
             }
+        }
+
+        location @50x.html {
+            set $from_error_page 'true';
+            try_files /50x.html $uri;
         }
     }
     {% end %}
@@ -362,6 +407,11 @@ http {
                 apisix.http_admin()
             }
         }
+
+        location @50x.html {
+            set $from_error_page 'true';
+            try_files /50x.html $uri;
+        }
     }
     {% end %}
 
@@ -393,10 +443,6 @@ http {
         {% end %} {% -- if enable_ipv6 %}
 
         server_name _;
-
-        {% if ssl.ssl_trusted_certificate ~= nil then %}
-        lua_ssl_trusted_certificate {* ssl.ssl_trusted_certificate *};
-        {% end %}
 
         {% if ssl.enable then %}
         ssl_certificate      {* ssl.ssl_cert *};
@@ -470,6 +516,7 @@ http {
             set $upstream_host               $http_host;
             set $upstream_uri                '';
             set $ctx_ref                     '';
+            set $from_error_page             '';
 
             {% if enabled_plugins["dubbo-proxy"] then %}
             set $dubbo_service_name          '';
@@ -497,9 +544,6 @@ http {
 
             if ($http_x_forwarded_for != "") {
                 set $var_x_forwarded_for "${http_x_forwarded_for}, ${realip_remote_addr}";
-            }
-            if ($http_x_forwarded_proto != "") {
-                set $var_x_forwarded_proto $http_x_forwarded_proto;
             }
             if ($http_x_forwarded_host != "") {
                 set $var_x_forwarded_host $http_x_forwarded_host;
@@ -612,6 +656,18 @@ http {
             proxy_pass $upstream_mirror_host$request_uri;
         }
         {% end %}
+
+        location @50x.html {
+            set $from_error_page 'true';
+            try_files /50x.html $uri;
+            header_filter_by_lua_block {
+                apisix.http_header_filter_phase()
+            }
+
+            log_by_lua_block {
+                apisix.http_log_phase()
+            }
+        }
     }
     # http end configuration snippet starts
     {% if http_end_configuration_snippet then %}

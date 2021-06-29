@@ -34,13 +34,13 @@ It can also be used as a [k8s ingress controller](https://github.com/apache/apis
 
 The technical architecture of Apache APISIX:
 
-![](docs/assets/images/apisix.png)
+![Technical architecture of Apache APISIX](docs/assets/images/apisix.png)
 
 ## Community
 
 - Mailing List: Mail to dev-subscribe@apisix.apache.org, follow the reply to subscribe to the mailing list.
 - QQ Group - 578997126
-- [Slack Workspace](https://join.slack.com/t/the-asf/shared_invite/zt-mrougyeu-2aG7BnFaV0VnAT9_JIUVaA) - join `#apisix` on our Slack to meet the team and ask questions
+- [Slack Workspace](https://join.slack.com/t/the-asf/shared_invite/zt-nggtva4i-hDCsW1S35MuZ2g_2DgVDGg) - join `#apisix` on our Slack to meet the team and ask questions
 - ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
 - [bilibili video](https://space.bilibili.com/551921247)
 - **Good first issues**:
@@ -50,7 +50,6 @@ The technical architecture of Apache APISIX:
   - [Apache APISIX Helm Chart](https://github.com/apache/apisix-helm-chart/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   - [Docker distribution for APISIX](https://github.com/apache/apisix-docker/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   - [Apache APISIX Website](https://github.com/apache/apisix-website/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-  - [The Control-Plane for APISIX](https://github.com/apache/apisix-control-plane/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 
 ## Features
 
@@ -74,11 +73,11 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
   - Proxy Protocol
   - Proxy Dubbo: Dubbo Proxy based on Tengine.
   - HTTP(S) Forward Proxy
-  - [SSL](docs/en/latest/https.md): Dynamically load an SSL certificate.
+  - [SSL](docs/en/latest/certificate.md): Dynamically load an SSL certificate.
 
 - **Full Dynamic**
 
-  - [Hot Updates And Hot Plugins](docs/en/latest/plugins.md): Continuously updates its configurations and plugins without restarts!
+  - [Hot Updates And Hot Plugins](docs/en/latest/architecture-design/plugin.md): Continuously updates its configurations and plugins without restarts!
   - [Proxy Rewrite](docs/en/latest/plugins/proxy-rewrite.md): Support rewrite the `host`, `uri`, `schema`, `enable_websocket`, `headers` of the request before send to upstream.
   - [Response Rewrite](docs/en/latest/plugins/response-rewrite.md): Set customized response status code, body and header to the client.
   - [Serverless](docs/en/latest/plugins/serverless.md): Invoke functions in each phase in APISIX.
@@ -99,6 +98,7 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
   - Support [TTL](docs/en/latest/admin-api.md#route)
   - [Support priority](docs/en/latest/router-radixtree.md#3-match-priority)
   - [Support Batch Http Requests](docs/en/latest/plugins/batch-requests.md)
+  - [Support filtering route by GraphQL attributes](docs/en/latest/router-radixtree.md#how-to-filter-route-by-graphql-attributes)
 
 - **Security**
 
@@ -116,7 +116,8 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
 
 - **OPS friendly**
 
-  - OpenTracing: support [Apache Skywalking](docs/en/latest/plugins/skywalking.md) and [Zipkin](docs/en/latest/plugins/zipkin.md)
+  - Zipkin tracing: [Zipkin](docs/en/latest/plugins/zipkin.md)
+  - Open source APM: support [Apache SkyWalking](docs/en/latest/plugins/skywalking.md)
   - works with external service discovery：In addition to the built-in etcd, it also supports [Consul](docs/en/latest/discovery/consul_kv.md) and [Nacos](docs/en/latest/discovery/nacos.md), and [Eureka](docs/en/latest/discovery.md)
   - Monitoring And Metrics: [Prometheus](docs/en/latest/plugins/prometheus.md)
   - Clustering: APISIX nodes are stateless, creates clustering of the configuration center, please refer to [etcd Clustering Guide](https://etcd.io/docs/v3.4.0/op-guide/clustering/).
@@ -134,6 +135,7 @@ A/B testing, canary release, blue-green deployment, limit rate, defense against 
 
 - **Highly scalable**
   - [Custom plugins](docs/en/latest/plugin-develop.md): Allows hooking of common phases, such as `rewrite`, `access`, `header filter`, `body filter` and `log`, also allows to hook the `balancer` stage.
+  - [Plugin can be writtern in Java/Go](docs/en/latest/external-plugin.md)
   - Custom load balancing algorithms: You can use custom load balancing algorithms during the `balancer` phase.
   - Custom routing: Support users to implement routing algorithms themselves.
 
@@ -153,9 +155,9 @@ There are several ways to install the Apache Release version of APISIX:
    - Download the latest source code release package:
 
      ```shell
-     $ mkdir apisix-2.5
-     $ wget https://downloads.apache.org/apisix/2.5/apache-apisix-2.5-src.tgz
-     $ tar zxvf apache-apisix-2.5-src.tgz -C apisix-2.5
+     $ mkdir apisix-2.7
+     $ wget https://downloads.apache.org/apisix/2.7/apache-apisix-2.7-src.tgz
+     $ tar zxvf apache-apisix-2.7-src.tgz -C apisix-2.7
      ```
 
    - Install the dependencies：
@@ -192,7 +194,7 @@ There are several ways to install the Apache Release version of APISIX:
    - install APISIX：
 
    ```shell
-   $ sudo yum install -y https://github.com/apache/apisix/releases/download/2.5/apisix-2.5-0.x86_64.rpm
+   $ sudo yum install -y https://github.com/apache/apisix/releases/download/2.7/apisix-2.7-0.x86_64.rpm
    ```
 
    - check the version of APISIX:
@@ -233,7 +235,7 @@ There are several ways to install the Apache Release version of APISIX:
 
    The getting started guide is a great way to learn the basics of APISIX. Just follow the steps in [Getting Started](docs/en/latest/getting-started.md).
 
-   Further, you can follow the documentation to try more [plugins](docs/en/latest/plugins.md).
+   Further, you can follow the documentation to try more [plugins](docs/en/latest/plugins).
 
 3. Admin API
 

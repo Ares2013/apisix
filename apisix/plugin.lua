@@ -17,6 +17,7 @@
 local require       = require
 local core          = require("apisix.core")
 local config_util   = require("apisix.core.config_util")
+local ngx_exit      = ngx.exit
 local pkg_loaded    = package.loaded
 local sort_tab      = table.sort
 local pcall         = pcall
@@ -27,6 +28,7 @@ local local_plugins = core.table.new(32, 0)
 local ngx           = ngx
 local tostring      = tostring
 local error         = error
+local is_http       = ngx.config.subsystem == "http"
 local local_plugins_hash    = core.table.new(0, 32)
 local stream_local_plugins  = core.table.new(32, 0)
 local stream_local_plugins_hash = core.table.new(0, 32)
@@ -137,37 +139,12 @@ local function load_plugin(name, plugins_list, is_stream_plugin)
 end
 
 
-local function plugins_eq(old, new)
-    local eq = core.table.set_eq(old, new)
-    if not eq then
-        core.log.info("plugin list changed")
-        return false
-    end
-
-    for name, plugin in pairs(old) do
-        eq = core.table.deep_eq(plugin.attr, plugin_attr(name))
-        if not eq then
-            core.log.info("plugin_attr of ", name, " changed")
-            return false
-        end
-    end
-
-    return true
-end
-
-
 local function load(plugin_names)
     local processed = {}
     for _, name in ipairs(plugin_names) do
         if processed[name] == nil then
             processed[name] = true
         end
-    end
-
-    -- the same configure may be synchronized more than one
-    if plugins_eq(local_plugins_hash, processed) then
-        core.log.info("plugins not changed")
-        return true
     end
 
     core.log.warn("new plugins: ", core.json.delay_encode(processed))
@@ -210,12 +187,6 @@ local function load_stream(plugin_names)
         if processed[name] == nil then
             processed[name] = true
         end
-    end
-
-    -- the same configure may be synchronized more than one
-    if plugins_eq(stream_local_plugins_hash, processed) then
-        core.log.info("plugins not changed")
-        return true
     end
 
     core.log.warn("new plugins: ", core.json.delay_encode(processed))
@@ -307,8 +278,6 @@ local function trace_plugins_info_for_debug(plugins)
         return
     end
 
-    local is_http = ngx.config.subsystem == "http"
-
     if not plugins then
         if is_http and not ngx.headers_sent then
             core.response.add_header("Apisix-Plugins", "no plugin")
@@ -336,7 +305,9 @@ function _M.filter(user_route, plugins)
     if user_plugin_conf == nil or
        core.table.nkeys(user_plugin_conf) == 0 then
         trace_plugins_info_for_debug(nil)
-        return core.empty_tab
+        -- when 'plugins' is given, always return 'plugins' itself instead
+        -- of another one
+        return plugins or core.empty_tab
     end
 
     plugins = plugins or core.tablepool.fetch("plugins", 32, 0)
@@ -670,11 +641,19 @@ function _M.run_plugin(phase, plugins, api_ctx)
             if phase_func then
                 local code, body = phase_func(plugins[i + 1], api_ctx)
                 if code or body then
-                    if code >= 400 then
-                        core.log.warn(plugins[i].name, " exits with http status code ", code)
-                    end
+                    if is_http then
+                        if code >= 400 then
+                            core.log.warn(plugins[i].name, " exits with http status code ", code)
+                        end
 
-                    core.response.exit(code, body)
+                        core.response.exit(code, body)
+                    else
+                        if code >= 400 then
+                            core.log.warn(plugins[i].name, " exits with status code ", code)
+                        end
+
+                        ngx_exit(1)
+                    end
                 end
             end
         end
@@ -699,7 +678,7 @@ function _M.run_global_rules(api_ctx, global_rules, phase_name)
         local orig_conf_version = api_ctx.conf_version
         local orig_conf_id = api_ctx.conf_id
 
-        if phase_name == "access" then
+        if phase_name == nil then
             api_ctx.global_rules = global_rules
         end
 
@@ -712,7 +691,7 @@ function _M.run_global_rules(api_ctx, global_rules, phase_name)
 
             core.table.clear(plugins)
             plugins = _M.filter(global_rule, plugins)
-            if phase_name == "access" then
+            if phase_name == nil then
                 _M.run_plugin("rewrite", plugins, api_ctx)
                 _M.run_plugin("access", plugins, api_ctx)
             else

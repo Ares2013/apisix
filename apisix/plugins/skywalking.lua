@@ -14,16 +14,17 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 --
-local sw_tracer = require("skywalking.tracer")
+local require = require
 local core = require("apisix.core")
+local plugin = require("apisix.plugin")
 local process = require("ngx.process")
+local sw_tracer = require("skywalking.tracer")
 local Span = require("skywalking.span")
 local ngx = ngx
 local math = math
-local require = require
 
 local plugin_name = "skywalking"
-local metadata_schema = {
+local attr_schema = {
     type = "object",
     properties = {
         service_name = {
@@ -66,7 +67,7 @@ local _M = {
     priority = -1100, -- last running plugin, but before serverless post func
     name = plugin_name,
     schema = schema,
-    metadata_schema = metadata_schema,
+    attr_schema = attr_schema,
 }
 
 
@@ -112,12 +113,9 @@ function _M.init()
         return
     end
 
-    local local_conf = core.config.local_conf()
-    local local_plugin_info = core.table.try_read_attr(local_conf,
-                                                       "plugin_attr",
-                                                       plugin_name) or {}
-    local_plugin_info = core.table.clone(local_plugin_info)
-    local ok, err = core.schema.check(metadata_schema, local_plugin_info)
+    local local_plugin_info = plugin.plugin_attr(plugin_name)
+    local_plugin_info = local_plugin_info and core.table.clone(local_plugin_info) or {}
+    local ok, err = core.schema.check(attr_schema, local_plugin_info)
     if not ok then
         core.log.error("failed to check the plugin_attr[", plugin_name, "]",
                        ": ", err)
@@ -129,6 +127,11 @@ function _M.init()
 
     -- TODO: maybe need to fetch them from plugin-metadata
     local metadata_shdict = ngx.shared.tracing_buffer
+
+    if local_plugin_info.service_instance_name == "$hostname" then
+        local_plugin_info.service_instance_name = core.utils.gethostname()
+    end
+
     metadata_shdict:set('serviceName', local_plugin_info.service_name)
     metadata_shdict:set('serviceInstanceName', local_plugin_info.service_instance_name)
 

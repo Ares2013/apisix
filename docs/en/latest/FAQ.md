@@ -59,7 +59,7 @@ For the configuration center, configuration storage is only the most basic funct
 4. Change Notification
 5. High Performance
 
-See more [etcd why](https://github.com/etcd-io/website/blob/master/content/docs/next/learning/why.md#comparison-chart).
+See more [etcd why](https://github.com/etcd-io/website/blob/master/content/en/docs/next/learning/why.md#comparison-chart).
 
 ## Why is it that installing APISIX dependencies with Luarocks causes timeout, slow or unsuccessful installation?
 
@@ -306,6 +306,11 @@ Note this option is not shown in the output of `etcd --help`.
 }
 ```
 
+```yml
+# etcd.conf.yml
+enable-grpc-gateway: true
+```
+
 Indeed this distinction was eliminated by etcd in their master branch, but not backport to announced versions, so be care when deploy your etcd cluster.
 
 ## How to set up high available Apache APISIX clusters?
@@ -423,4 +428,111 @@ curl http://127.0.0.1:9080/apisix/admin/routes/1  -H 'X-API-KEY: edd1c9f034335f1
 $ curl http://127.0.0.1:9080/ip -i
 HTTP/1.1 200 OK
 ...
+```
+
+## What is the `X-API-KEY` of Admin API? Can it be modified?
+
+1. The `X-API-KEY` of Admin API refers to the `apisix.admin_key.key` in the `config.yaml` file, and the default value is `edd1c9f034335f136f87ad84b625c8f1`. It is the access token of the Admin API.
+
+Note: There are security risks in using the default API token. It is recommended to update it when deploying to a production environment.
+
+2. `X-API-KEY` can be modified.
+
+For example: make the following changes to the `apisix.admin_key.key` in the `conf/config.yaml` file and reload APISIX.
+
+```yaml
+apisix:
+  admin_key
+    -
+      name: "admin"
+      key: abcdefghabcdefgh
+      role: admin
+```
+
+Access the Admin API:
+
+```shell
+$ curl -i http://127.0.0.1:9080/apisix/admin/routes/1  -H 'X-API-KEY: abcdefghabcdefgh' -X PUT -d '
+{
+    "uris":[ "/*" ],
+    "name":"admin-token-test",
+    "upstream":{
+        "nodes":[
+            {
+                "host":"127.0.0.1",
+                "port":1980,
+                "weight":1
+            }
+        ],
+        "type":"roundrobin"
+    }
+}'
+
+HTTP/1.1 200 OK
+......
+```
+
+The route was created successfully. It means that the modification of `X-API-KEY` takes effect.
+
+## How to allow all IPs to access Admin API
+
+By default, Apache APISIX only allows the IP range of `127.0.0.0/24` to access the `Admin API`. If you want to allow all IP access, then you only need to add the following configuration in the `conf/config.yaml` configuration file.
+
+```yaml
+apisix:
+  allow_admin:
+    - 0.0.0.0/0
+```
+
+Restart or reload APISIX, all IPs can access the `Admin API`.
+
+**Note: You can use this method in a non-production environment to allow all clients from anywhere to access your `Apache APISIX` instances, but it is not safe to use it in a production environment. In production environment, please only authorize specific IP addresses or address ranges to access your instance.**
+
+## How to auto renew SSL cert via acme.sh
+
+```bash
+$ curl --output /root/.acme.sh/renew-hook-update-apisix.sh --silent https://gist.githubusercontent.com/anjia0532/9ebf8011322f43e3f5037bc2af3aeaa6/raw/65b359a4eed0ae990f9188c2afa22bacd8471652/renew-hook-update-apisix.sh
+
+$ chmod +x /root/.acme.sh/renew-hook-update-apisix.sh
+
+$ acme.sh  --issue  --staging  -d demo.domain --renew-hook "/root/.acme.sh/renew-hook-update-apisix.sh  -h http://apisix-admin:port -p /root/.acme.sh/demo.domain/demo.domain.cer -k /root/.acme.sh/demo.domain/demo.domain.key -a xxxxxxxxxxxxx"
+
+$ acme.sh --renew --domain demo.domain
+
+```
+
+Blog https://juejin.cn/post/6965778290619449351 has detail setup.
+
+## How to strip route prefix for path matching
+
+To strip route prefix before forwarding to upstream, for example from `/foo/get` to `/get`, could be achieved through plugin `proxy-rewrite`.
+
+```shell
+curl -i http://127.0.0.1:9080/apisix/admin/routes/1 -H 'X-API-KEY: edd1c9f034335f136f87ad84b625c8f1' -X PUT -d '
+{
+    "uri": "/foo/*",
+    "plugins": {
+        "proxy-rewrite": {
+            "regex_uri": ["^/foo/(.*)","/$1"]
+        }
+    },
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "httpbin.org:80": 1
+        }
+    }
+}'
+```
+
+Test request:
+
+```shell
+$ curl http://127.0.0.1:9080/foo/get -i
+HTTP/1.1 200 OK
+...
+{
+  ...
+  "url": "http://127.0.0.1/get"
+}
 ```

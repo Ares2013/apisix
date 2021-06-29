@@ -30,6 +30,7 @@ master_on();
 
 my $apisix_home = $ENV{APISIX_HOME} || cwd();
 my $nginx_binary = $ENV{'TEST_NGINX_BINARY'} || 'nginx';
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
 sub read_file($) {
     my $infile = shift;
@@ -78,7 +79,7 @@ if ($custom_dns_server) {
 
 my $default_yaml_config = read_file("conf/config-default.yaml");
 # enable example-plugin as some tests require it
-$default_yaml_config =~ s/# - example-plugin/- example-plugin/;
+$default_yaml_config =~ s/#- example-plugin/- example-plugin/;
 $default_yaml_config =~ s/enable_export_server: true/enable_export_server: false/;
 
 my $user_yaml_config = read_file("conf/config.yaml");
@@ -88,6 +89,7 @@ my $ssl_ecc_crt = read_file("t/certs/apisix_ecc.crt");
 my $ssl_ecc_key = read_file("t/certs/apisix_ecc.key");
 my $test2_crt = read_file("t/certs/test2.crt");
 my $test2_key = read_file("t/certs/test2.key");
+my $test_50x_html = read_file("t/error_page/50x.html");
 $user_yaml_config = <<_EOC_;
 apisix:
   node_listen: 1984
@@ -206,6 +208,13 @@ my $grpc_location = <<_EOC_;
         }
 _EOC_
 
+my $a6_ngx_directives = "";
+if ($version =~ m/\/apisix-nginx-module/) {
+    $a6_ngx_directives = <<_EOC_;
+    apisix_delay_client_max_body_check on;
+_EOC_
+}
+
 add_block_preprocessor(sub {
     my ($block) = @_;
     my $wait_etcd_sync = $block->wait_etcd_sync // 0.1;
@@ -228,6 +237,7 @@ _EOC_
 worker_rlimit_core  500M;
 env ENABLE_ETCD_AUTH;
 env APISIX_PROFILE;
+env PATH; # for searching external plugin runner's binary
 env TEST_NGINX_HTML_DIR;
 _EOC_
 
@@ -235,9 +245,55 @@ _EOC_
     my $timeout = $block->timeout // 5;
     $block->set_value("timeout", $timeout);
 
-    $block->set_value("main_config", $main_config);
+    my $stream_tls_request = $block->stream_tls_request;
+    if ($stream_tls_request) {
+        # generate a springboard to send tls stream request
+        $block->set_value("stream_conf_enable", 1);
+        $block->set_value("request", "GET /stream_tls_request");
+
+        my $sni = "nil";
+        if ($block->stream_sni) {
+            $sni = '"' . $block->stream_sni . '"';
+        }
+        chomp $stream_tls_request;
+
+        my $config = <<_EOC_;
+            location /stream_tls_request {
+                content_by_lua_block {
+                    local sock = ngx.socket.tcp()
+                    local ok, err = sock:connect("127.0.0.1", 2005)
+                    if not ok then
+                        ngx.say("failed to connect: ", err)
+                        return
+                    end
+
+                    local sess, err = sock:sslhandshake(nil, $sni, false)
+                    if not sess then
+                        ngx.say("failed to do SSL handshake: ", err)
+                        return
+                    end
+
+                    local bytes, err = sock:send("$stream_tls_request")
+                    if not bytes then
+                        ngx.say("send stream request error: ", err)
+                        return
+                    end
+                    local data, err = sock:receive("*a")
+                    if not data then
+                        sock:close()
+                        ngx.say("receive stream response error: ", err)
+                        return
+                    end
+                    ngx.print(data)
+                }
+            }
+_EOC_
+        $block->set_value("config", $config)
+    }
 
     my $stream_enable = $block->stream_enable;
+    my $stream_conf_enable = $block->stream_conf_enable;
+    my $extra_stream_config = $block->extra_stream_config // '';
     my $stream_config = $block->stream_config // <<_EOC_;
     $lua_deps_path
     lua_socket_log_errors off;
@@ -261,7 +317,10 @@ _EOC_
         require "resty.core"
 
         apisix = require("apisix")
-        apisix.stream_init()
+        local args = {
+            dns_resolver = $dns_addrs_tbl_str,
+        }
+        apisix.stream_init(args)
 _EOC_
 
     $stream_config .= <<_EOC_;
@@ -272,6 +331,7 @@ _EOC_
         apisix.stream_init_worker()
     }
 
+    $extra_stream_config
 
     # fake server, only for test
     server {
@@ -290,6 +350,15 @@ _EOC_
     }
 
     my $stream_server_config = $block->stream_server_config // <<_EOC_;
+    listen 2005 ssl;
+    ssl_certificate             cert/apisix.crt;
+    ssl_certificate_key         cert/apisix.key;
+    lua_ssl_trusted_certificate cert/apisix.crt;
+
+    ssl_certificate_by_lua_block {
+        apisix.stream_ssl_phase()
+    }
+
     preread_by_lua_block {
         -- wait for etcd sync
         ngx.sleep($wait_etcd_sync)
@@ -306,6 +375,20 @@ _EOC_
     if (defined $stream_enable) {
         $block->set_value("stream_server_config", $stream_server_config);
     }
+
+    if (defined $stream_conf_enable) {
+        $main_config .= <<_EOC_;
+stream {
+$stream_config
+    server {
+        listen 1985;
+        $stream_server_config
+    }
+}
+_EOC_
+    }
+
+    $block->set_value("main_config", $main_config);
 
     my $extra_init_by_lua = $block->extra_init_by_lua // "";
     my $init_by_lua_block = $block->init_by_lua_block // <<_EOC_;
@@ -358,6 +441,10 @@ _EOC_
     lua_socket_log_errors off;
     client_body_buffer_size 8k;
 
+    error_page 500 \@50x.html;
+
+    variables_hash_bucket_size 128;
+
     upstream apisix_backend {
         server 0.0.0.1;
         balancer_by_lua_block {
@@ -377,7 +464,17 @@ _EOC_
         require("apisix").http_init_worker()
         $extra_init_worker_by_lua
     }
+_EOC_
 
+    if ($version !~ m/\/1.17.8/) {
+    $http_config .= <<_EOC_;
+    exit_worker_by_lua_block {
+        require("apisix").http_exit_worker()
+    }
+_EOC_
+    }
+
+    $http_config .= <<_EOC_;
     log_format main escape=default '\$remote_addr - \$remote_user [\$time_local] \$http_host "\$request" \$status \$body_bytes_sent \$request_time "\$http_referer" "\$http_user_agent" \$upstream_addr \$upstream_status \$upstream_response_time "\$upstream_scheme://\$upstream_host\$upstream_uri"';
 
     # fake server, only for test
@@ -410,6 +507,18 @@ _EOC_
             more_clear_headers Date;
         }
 
+        location \@50x.html {
+            set \$from_error_page 'true';
+            try_files /50x.html \$uri;
+            header_filter_by_lua_block {
+                apisix.http_header_filter_phase()
+            }
+
+            log_by_lua_block {
+                apisix.http_log_phase()
+            }
+        }
+
         location = /v3/auth/authenticate {
             content_by_lua_block {
                 ngx.log(ngx.WARN, "etcd auth failed!")
@@ -424,6 +533,8 @@ _EOC_
             }
         }
     }
+
+    $a6_ngx_directives
 
     server {
         listen 1983 ssl;
@@ -496,6 +607,18 @@ _EOC_
             }
         }
 
+        location \@50x.html {
+            set \$from_error_page 'true';
+            try_files /50x.html \$uri;
+            header_filter_by_lua_block {
+                apisix.http_header_filter_phase()
+            }
+
+            log_by_lua_block {
+                apisix.http_log_phase()
+            }
+        }
+
         location /v1/ {
             content_by_lua_block {
                 apisix.http_control()
@@ -511,6 +634,7 @@ _EOC_
             set \$upstream_host               \$http_host;
             set \$upstream_uri                '';
             set \$ctx_ref                     '';
+            set \$from_error_page             '';
 
             set \$upstream_cache_zone            off;
             set \$upstream_cache_key             '';
@@ -539,6 +663,29 @@ _EOC_
             proxy_set_header   Connection        \$upstream_connection;
             proxy_set_header   X-Real-IP         \$remote_addr;
             proxy_pass_header  Date;
+
+            ### the following x-forwarded-* headers is to send to upstream server
+
+            set \$var_x_forwarded_for        \$remote_addr;
+            set \$var_x_forwarded_proto      \$scheme;
+            set \$var_x_forwarded_host       \$host;
+            set \$var_x_forwarded_port       \$server_port;
+
+            if (\$http_x_forwarded_for != "") {
+                set \$var_x_forwarded_for "\${http_x_forwarded_for}, \${realip_remote_addr}";
+            }
+            if (\$http_x_forwarded_host != "") {
+                set \$var_x_forwarded_host \$http_x_forwarded_host;
+            }
+            if (\$http_x_forwarded_port != "") {
+                set \$var_x_forwarded_port \$http_x_forwarded_port;
+            }
+
+            proxy_set_header   X-Forwarded-For      \$var_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Proto    \$var_x_forwarded_proto;
+            proxy_set_header   X-Forwarded-Host     \$var_x_forwarded_host;
+            proxy_set_header   X-Forwarded-Port     \$var_x_forwarded_port;
+
             proxy_pass         \$upstream_scheme://apisix_backend\$upstream_uri;
             mirror             /proxy_mirror;
 
@@ -609,6 +756,8 @@ $ssl_ecc_key
 $test2_crt
 >>> ../conf/cert/test2.key
 $test2_key
+>>> 50x.html
+$test_50x_html
 $user_apisix_yaml
 _EOC_
 
